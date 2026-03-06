@@ -2771,6 +2771,10 @@ p {
 }
 
 @media (max-width: 992px) {
+    .shop-layout {
+        --shop-filter-panel-width: min(90vw, 360px);
+    }
+
     :root {
         --section-padding: 70px 0;
     }
@@ -2823,13 +2827,13 @@ p {
         position: fixed;
         top: 0;
         right: 0;
-        width: min(86vw, 340px);
+        width: var(--shop-filter-panel-width);
         height: 100vh;
         overflow-y: auto;
         margin-bottom: 0;
         border-radius: 0;
         z-index: 1200;
-        transform: translateX(105%);
+        transform: translateX(112%);
         transition: transform 0.28s ease;
         padding-bottom: 92px;
         -webkit-overflow-scrolling: touch;
@@ -2912,11 +2916,24 @@ p {
     }
 
     .shop-apply-filters {
-        position: sticky;
-        bottom: 0;
-        margin-top: 20px;
+        position: fixed;
+        right: 20px;
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        width: calc(var(--shop-filter-panel-width) - 40px);
+        margin-top: 0;
+        z-index: 1210;
         border-radius: 10px;
         box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.14);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(112%);
+        transition: transform 0.28s ease, opacity 0.2s ease;
+    }
+
+    .shop-filters.is-open .shop-apply-filters {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
     }
 
     .shop-products-header {
@@ -2972,6 +2989,16 @@ p {
         right: 10px;
         padding: 7px 10px;
         font-size: 0.72rem;
+    }
+
+    .shop-layout {
+        --shop-filter-panel-width: 92vw;
+    }
+
+    .shop-apply-filters {
+        right: 4vw;
+        width: calc(92vw - 20px);
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     }
 }
 
