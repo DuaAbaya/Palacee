@@ -2109,8 +2109,8 @@ function createProductCard(product) {
                         👁
                     </button>
                     ${showAdminRemove ? `
-                    <button class="product-action-btn" onclick="removeProductAsAdmin(${product.id})" title="Remove product">
-                        ?
+                    <button class="product-action-btn" onclick="removeProductAsAdmin(${product.id})" title="Remove product" style="font-size: 0.68rem; font-weight: 700; letter-spacing: 0.3px;">
+                        DEL
                     </button>
                     ` : ''}
                 </div>
