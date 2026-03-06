@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You - Dua Abaya Palace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .thank-you-page {
+            min-height: 70vh;
+            padding: 120px 20px 80px;
+        }
+
+        .thank-you-card {
+            max-width: 760px;
+            margin: 0 auto;
+            background: var(--card-bg, #fff);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 18px;
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+        }
+
+        .thank-you-title {
+            margin: 0 0 12px;
+            font-size: 2rem;
+        }
+
+        .thank-you-meta {
+            margin: 16px 0;
+            display: grid;
+            gap: 8px;
+        }
+
+        .thank-you-items {
+            margin-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            padding-top: 20px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .thank-you-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="navbar-link">Home</a></li>
+                <li><a href="shop.html" class="navbar-link">Shop</a></li>
+                <li><a href="about.html" class="navbar-link">About</a></li>
+                <li><a href="contact.html" class="navbar-link">Contact</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
+                <button class="navbar-icon theme-toggle" onclick="toggleTheme()">🌙</button>
+                <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
+                <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="thank-you-page">
+        <div class="thank-you-card" id="thankYouCard">
+            <h1 class="thank-you-title">Thank you for your order.</h1>
+            <p>Your checkout is complete. We have received your request and your order details are recorded.</p>
+            <div class="thank-you-meta" id="thankYouMeta"></div>
+            <div class="thank-you-items" id="thankYouItems"></div>
+            <div style="margin-top: 24px;">
+                <a href="shop.html" class="btn btn-primary">Continue Shopping</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section"><h3>Dua Abaya Palace</h3><p>Elegant modest fashion.</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a></div></div>
+            <div class="footer-section"><h3>Quick Links</h3><ul class="footer-links"><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+            <div class="footer-section"><h3>Customer Service</h3><ul class="footer-links"><li><a href="#">Shipping</a></li><li><a href="#">return policy not available</a></li><li><a href="#">FAQs</a></li></ul></div>
+            <div class="footer-section"><h3>Contact</h3><ul class="footer-links"><li>Lalitpur, U.P.</li><li>+91 9415153294</li><li>tabassumnadeem.ltp@gmail.com</li></ul></div>
+        </div>
+        <div class="footer-bottom"><p>© 2024 Dua Abaya Palace. All rights reserved.</p></div>
+    </footer>
+
+    <div class="toast"></div>
+    <button class="scroll-top" onclick="scrollToTop()"><i class="fas fa-chevron-up"></i></button>
+
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            renderThankYouOrder();
+        });
+
+        function renderThankYouOrder() {
+            const metaEl = document.getElementById('thankYouMeta');
+            const itemsEl = document.getElementById('thankYouItems');
+            const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
+
+            if (!lastOrder) {
+                metaEl.innerHTML = '<p>No recent order found.</p>';
+                itemsEl.innerHTML = '';
+                return;
+            }
+
+            metaEl.innerHTML = `
+                <div><strong>Order ID:</strong> ${lastOrder.orderId}</div>
+                <div><strong>Date:</strong> ${new Date(lastOrder.createdAt).toLocaleString()}</div>
+                <div><strong>Payment:</strong> ${lastOrder.paymentMethod.toUpperCase()}</div>
+                <div><strong>Total:</strong> ${lastOrder.displayTotal}</div>
+            `;
+
+            itemsEl.innerHTML = lastOrder.items.map(item => `
+                <div class="thank-you-item">
+                    <div>${item.name} (x${item.quantity})</div>
+                    <div>${formatPrice(item.price * item.quantity)}</div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
+

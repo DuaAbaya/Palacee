@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart - Dua Abaya Palace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="navbar-link">Home</a></li>
+                <li><a href="shop.html" class="navbar-link">Shop</a></li>
+                <li><a href="about.html" class="navbar-link">About</a></li>
+                <li><a href="contact.html" class="navbar-link">Contact</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
+                <button class="navbar-icon theme-toggle" onclick="toggleTheme()">🌙</button>
+                <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
+                <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+    </nav>
+    <div class="mobile-menu"><button class="mobile-menu-close"><i class="fas fa-times"></i></button><ul><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+    <div class="mobile-overlay"></div>
+
+    <!-- Cart Page -->
+    <section class="cart-page">
+        <div class="cart-container">
+            <h1 class="cart-title">Shopping Cart</h1>
+            
+            <div class="cart-grid">
+                <div class="cart-items" id="cartItems">
+                    <!-- Cart items rendered by JS -->
+                </div>
+                
+                <div class="cart-summary">
+                    <h3>Order Summary</h3>
+                    <div class="cart-summary-row">
+                        <span>Subtotal</span>
+                        <span id="cartSubtotal">$0.00</span>
+                    </div>
+                    <div class="cart-summary-row">
+                        <span>Shipping</span>
+                        <span>Free</span>
+                    </div>
+                    <div class="cart-summary-row">
+                        <span>Tax</span>
+                        <span>Calculated at checkout</span>
+                    </div>
+                    <div class="cart-summary-row total">
+                        <span>Total</span>
+                        <span id="cartTotal">$0.00</span>
+                    </div>
+                    <a href="checkout.html" class="btn btn-primary">Proceed to Checkout</a>
+                    <a href="shop.html" class="btn btn-secondary" style="margin-top: 10px;">Continue Shopping</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section"><h3>Dua Abaya Palace</h3><p>Elegant modest fashion.</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a></div></div>
+            <div class="footer-section"><h3>Quick Links</h3><ul class="footer-links"><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+            <div class="footer-section"><h3>Customer Service</h3><ul class="footer-links"><li><a href="#">Shipping</a></li><li><a href="#">return policy not available</a></li><li><a href="#">FAQs</a></li></ul></div>
+            <div class="footer-section"><h3>Contact</h3><ul class="footer-links"><li>Lalitpur, U.P.</li><li>+91 9415153294</li><li>tabassumnadeem.ltp@gmail.com</li></ul></div>
+        </div>
+        <div class="footer-bottom"><p>© 2024 Dua Abaya Palace. All rights reserved.</p></div>
+    </footer>
+
+    <div class="toast"></div>
+    <button class="scroll-top" onclick="scrollToTop()"><i class="fas fa-chevron-up"></i></button>
+    <a href="https://wa.me/9415153294" class="whatsapp-float" target="_blank"><i class="fab fa-whatsapp"></i></a>
+
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            renderCart();
+        });
+    </script>
+</body>
+</html>
+

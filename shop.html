@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop - Dua Abaya Palace</title>
+    <meta name="description" content="Browse our complete collection of elegant abayas">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="navbar-link" data-translate="home">Home</a></li>
+                <li><a href="shop.html" class="navbar-link active" data-translate="shop">Shop</a></li>
+                <li><a href="about.html" class="navbar-link" data-translate="about">About</a></li>
+                <li><a href="contact.html" class="navbar-link" data-translate="contact">Contact</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <div class="currency-lang-selector">
+                    <div class="currency-selector">
+                        <select id="currency-select" onchange="changeCurrency(this.value)">
+                            <option value="INR">INR</option>
+                            <option value="PKR">PKR</option>
+                            <option value="USD">USD</option>
+                            <option value="SAR">SAR</option>
+                            <option value="AED">AED</option>
+                        </select>
+                    </div>
+                    <div class="language-selector">
+                        <select id="language-select" onchange="changeLanguage(this.value)">
+                            <option value="en">English</option>
+                            <option value="ur">اردو</option>
+                            <option value="hi">हिन्दी</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
+                <button class="navbar-icon theme-toggle" onclick="toggleTheme()">🌙</button>
+                <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
+                <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+        <div class="search-bar">
+            <form action="shop.html"><input type="text" placeholder="Search for abayas..."><button type="submit"><i class="fas fa-search"></i></button></form>
+        </div>
+    </nav>
+
+    <div class="mobile-menu">
+        <button class="mobile-menu-close"><i class="fas fa-times"></i></button>
+        <ul>
+            <li><a href="index.html" class="navbar-link">Home</a></li>
+            <li><a href="shop.html" class="navbar-link">Shop</a></li>
+            <li><a href="about.html" class="navbar-link">About</a></li>
+            <li><a href="contact.html" class="navbar-link">Contact</a></li>
+            <li><a href="cart.html" class="navbar-link">Cart</a></li>
+            <li><a href="account.html" class="navbar-link">Account</a></li>
+        </ul>
+    </div>
+    <div class="mobile-overlay"></div>
+
+    <!-- Shop Header -->
+    <section class="shop-page">
+        <div class="shop-container">
+            <div class="shop-header">
+                <h1>Our Collection</h1>
+                <p>Discover elegant abayas for every occasion</p>
+            </div>
+            
+            <div class="shop-layout">
+                <!-- Filters Sidebar -->
+                <aside class="shop-filters">
+                    <div class="filter-section">
+                        <h4>Categories</h4>
+                        <div class="filter-options">
+                            <label class="filter-option"><input type="checkbox" value="Open Abaya"><span>Open Abaya</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Closed Abaya"><span>Closed Abaya</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Party Wear"><span>Party Wear</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Daily Wear"><span>Daily Wear</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Dubai Abaya"><span>Dubai Abaya</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Saudi Abaya"><span>Saudi Abaya</span></label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h4>Price Range</h4>
+                        <div class="filter-price">
+                            <input type="number" id="minPrice" placeholder="Min" min="0">
+                            <span>-</span>
+                            <input type="number" id="maxPrice" placeholder="Max" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h4>Size</h4>
+                        <div class="filter-options">
+                            <label class="filter-option"><input type="checkbox" value="S"><span>Small</span></label>
+                            <label class="filter-option"><input type="checkbox" value="M"><span>Medium</span></label>
+                            <label class="filter-option"><input type="checkbox" value="L"><span>Large</span></label>
+                            <label class="filter-option"><input type="checkbox" value="XL"><span>XL</span></label>
+                            <label class="filter-option"><input type="checkbox" value="XXL"><span>XXL</span></label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h4>Color</h4>
+                        <div class="filter-color">
+                            <div class="color-swatch active" style="background: #000;" title="Black"></div>
+                            <div class="color-swatch" style="background: #8B4513;" title="Brown"></div>
+                            <div class="color-swatch" style="background: #000080;" title="Navy"></div>
+                            <div class="color-swatch" style="background: #d4c4a8;" title="Beige"></div>
+                            <div class="color-swatch" style="background: #800020;" title="Burgundy"></div>
+                            <div class="color-swatch" style="background: #FFD700;" title="Gold"></div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="applyFilters()" style="width: 100%;">Apply Filters</button>
+                </aside>
+                
+                <!-- Products -->
+                <div class="shop-products">
+                    <div class="shop-products-header">
+                        <span class="shop-results">Showing 0 products</span>
+                        <div class="shop-sort">
+                             <select id="sortSelect" onchange="applyFilters()">
+                                <option value="">Sort by</option>
+                                <option value="price-low">Price: Low to High</option>
+                                <option value="price-high">Price: High to Low</option>
+                                <option value="newest">Newest</option>
+                                <option value="popular">Most Popular</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="shop-products-grid" id="shopProductsGrid">
+                        <!-- Products rendered by JS -->
+                    </div>
+                    
+                    
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3>Dua Abaya Palace</h3>
+                <p>Your destination for elegant and modest fashion.</p>
+                <div class="footer-social">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul class="footer-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="shop.html">Shop</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Customer Service</h3>
+                <ul class="footer-links">
+                    <li><a href="#">Shipping Policy</a></li>
+                    <li><a href="#">return policy not available</a></li>
+                    <li><a href="#">FAQs</a></li>
+                    <li><a href="#">Privacy Policy</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contact Us</h3>
+                <ul class="footer-links">
+                    <li><i class="fas fa-map-marker-alt"></i> Lalitpur U.P.</li>
+                    <li><i class="fas fa-phone"></i> +91 9415153294</li>
+                    <li><i class="fas fa-envelope"></i> tabassumnadeem.ltp@gmail.com</li>
+                    <li><i class="fab fa-whatsapp"></i> +91 9415153294</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2024 Dua Abaya Palace. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Quick View Modal -->
+    <div class="modal" id="quickViewModal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="quick-view-content"></div>
+        </div>
+    </div>
+
+    <div class="toast"></div>
+    <button class="scroll-top" onclick="scrollToTop()"><i class="fas fa-chevron-up"></i></button>
+    <a href="https://wa.me/9415153294" class="whatsapp-float" target="_blank"><i class="fab fa-whatsapp"></i></a>
+
+    <script src="js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            renderProducts();
+        });
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us - Dua Abaya Palace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="navbar-link">Home</a></li>
+                <li><a href="shop.html" class="navbar-link">Shop</a></li>
+                <li><a href="about.html" class="navbar-link active">About</a></li>
+                <li><a href="contact.html" class="navbar-link">Contact</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
+                <button class="navbar-icon theme-toggle" onclick="toggleTheme()">🌙</button>
+                <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
+                <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+    </nav>
+    <div class="mobile-menu"><button class="mobile-menu-close"><i class="fas fa-times"></i></button><ul><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+    <div class="mobile-overlay"></div>
+
+    <!-- About Hero -->
+    <section class="about-hero">
+        <div class="container">
+            <h1>Our Story</h1>
+            <p>Empowering women through elegant modest fashion since 2015</p>
+        </div>
+    </section>
+
+    <!-- About Story -->
+    <section class="about-story">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h2>The Beginning</h2>
+                    <p>Dua Abaya Palace was founded with a simple mission: to provide elegant, high-quality modest fashion that makes every woman feel confident and beautiful.</p>
+                    <p>What started as a small boutique in Dubai has grown into a renowned brand, serving customers worldwide with our exquisite collection of abayas and modest wear.</p>
+                    <p>We believe that modesty and elegance go hand in hand. Our designs blend traditional craftsmanship with modern aesthetics, creating pieces that are both timeless and contemporary.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Our Values -->
+    <section class="about-values">
+        <div class="container">
+            <div class="section-title">
+                <h2>Our Values</h2>
+            </div>
+            <div class="values-grid">
+                <div class="value-card">
+                    <div class="value-icon">✨</div>
+                    <h3>Quality</h3>
+                    <p>We use only the finest fabrics and materials, ensuring each piece is crafted to perfection.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">🤲</div>
+                    <h3>Modesty</h3>
+                    <p>We honor Islamic values while embracing modern fashion trends and designs.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon">💝</div>
+                    <h3>Customer First</h3>
+                    <p>Your satisfaction is our priority. We strive to exceed expectations in every interaction.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission -->
+    <section class="about-story">
+        <div class="container">
+            <div class="about-content" style="grid-template-columns: 1fr 1fr; direction: rtl;">
+                <div class="about-text" style="direction: ltr;">
+                    <h2>Our Mission</h2>
+                    <p>At Dua Abaya Palace, our mission is to empower women through elegant modest fashion. We believe every woman deserves to express her personal style while maintaining her values and beliefs.</p>
+                    <p>Our team of skilled designers draws inspiration from both Eastern and Western fashion traditions, creating a unique blend that appeals to women from all walks of life.</p>
+                    <p>We are committed to sustainable practices and ethical manufacturing, ensuring that every piece is made with care for both the environment and the people who create them.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section"><h3>Dua Abaya Palace</h3><p>Elegant modest fashion.</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a></div></div>
+            <div class="footer-section"><h3>Quick Links</h3><ul class="footer-links"><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+            <div class="footer-section"><h3>Customer Service</h3><ul class="footer-links"><li><a href="#">Shipping</a></li><li><a href="#">return policy not available</a></li><li><a href="#">FAQs</a></li></ul></div>
+            <div class="footer-section"><h3>Contact</h3><ul class="footer-links"><li>Lalitpur, U.P.</li><li>+91 9415153294</li><li>tabassumnadeem.ltp@gmail.com</li>+91 9415153294</ul></div>
+        </div>
+        <div class="footer-bottom"><p>© 2024 Dua Abaya Palace. All rights reserved.</p></div>
+    </footer>
+
+    <div class="toast"></div>
+    <button class="scroll-top" onclick="scrollToTop()"><i class="fas fa-chevron-up"></i></button>
+    <a href="https://wa.me/9415153294" class="whatsapp-float" target="_blank"><i class="fab fa-whatsapp"></i></a>
+
+    <script src="js/main.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', initializeApp);</script>
+</body>
+</html>
+

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - Dua Abaya Palace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="navbar-link">Home</a></li>
+                <li><a href="shop.html" class="navbar-link">Shop</a></li>
+                <li><a href="about.html" class="navbar-link">About</a></li>
+                <li><a href="contact.html" class="navbar-link active">Contact</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
+                <button class="navbar-icon theme-toggle" onclick="toggleTheme()">🌙</button>
+                <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
+                <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+    </nav>
+    <div class="mobile-menu"><button class="mobile-menu-close"><i class="fas fa-times"></i></button><ul><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+    <div class="mobile-overlay"></div>
+
+    <!-- Contact Page -->
+    <section class="contact-page">
+        <div class="container">
+            <div class="contact-container">
+                <div class="contact-info">
+                    <h2>Get In Touch</h2>
+                    <p>We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fas fa-map-marker-alt"></i></div>
+                        <div>
+                            <h4>Store Location</h4>
+                            <p>Govind Nagar Opposite To Arman Garden, Lalitpur, U.P.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fas fa-phone"></i></div>
+                        <div>
+                            <h4>Phone</h4>
+                            <p>+91 9415153294</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fas fa-envelope"></i></div>
+                        <div>
+                            <h4>Email</h4>
+                            <p>tabassumnadeem.ltp@gmail.com</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fab fa-whatsapp"></i></div>
+                        <div>
+                            <h4>WhatsApp</h4>
+                            <p>+91 9415153294</p>
+                        </div>
+                    </div>
+                    
+                    <div class="contact-item">
+                        <div class="contact-icon"><i class="fas fa-clock"></i></div>
+                        <div>
+                            <h4>Working Hours</h4>
+                            <p>Mon - Sat: 10:00 AM - 10:00 PM</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="contact-form">
+                    <h3>Send Us a Message</h3>
+                    <form onsubmit="submitContactForm(event)">
+                        <div class="form-group">
+                            <label>Your Name</label>
+                            <input type="text" placeholder="Enter your name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email Address</label>
+                            <input type="email" placeholder="Enter your email" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" placeholder="Enter your phone">
+                        </div>
+                        <div class="form-group">
+                            <label>Subject</label>
+                            <select required>
+                                <option value="">Select a subject</option>
+                                <option value="order">Order Inquiry</option>
+                                <option value="product">Product Question</option>
+                                <option value="return">return policy not available</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Message</label>
+                            <textarea placeholder="Write your message here..." rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Message</button>
+                    </form>
+                </div>
+            </div>
+            
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section"><h3>Dua Abaya Palace</h3><p>Elegant modest fashion.</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a></div></div>
+            <div class="footer-section"><h3>Quick Links</h3><ul class="footer-links"><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+            <div class="footer-section"><h3>Customer Service</h3><ul class="footer-links"><li><a href="#">Shipping</a></li><li><a href="#">return policy not available</a></li><li><a href="#">FAQs</a></li></ul></div>
+            <div class="footer-section"><h3>Contact</h3><ul class="footer-links"><li>Lalitpur, U.P.</li><li>+91 9415153294</li><li>tabassumnadeem.ltp@gmail.com</li></ul></div>
+        </div>
+        <div class="footer-bottom"><p>© 2024 Dua Abaya Palace. All rights reserved.</p></div>
+    </footer>
+
+    <div class="toast"></div>
+    <button class="scroll-top" onclick="scrollToTop()"><i class="fas fa-chevron-up"></i></button>
+    <a href="https://wa.me/9415153294" class="whatsapp-float" target="_blank"><i class="fab fa-whatsapp"></i></a>
+
+    <script src="js/main.js"></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        const CONTACT_FORM_TARGET_EMAIL = 'tanveerkhan.ltp786786@gmail.com';
+
+        async function submitContactForm(e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const fields = form.querySelectorAll('input, select, textarea');
+            const name = fields[0]?.value?.trim() || '';
+            const email = fields[1]?.value?.trim() || '';
+            const phone = fields[2]?.value?.trim() || '';
+            const subject = fields[3]?.value?.trim() || 'other';
+            const message = fields[4]?.value?.trim() || '';
+
+            const payload = {
+                name,
+                email,
+                phone,
+                subject,
+                message,
+                _subject: `New Contact Message: ${subject}`,
+                _replyto: email,
+                _captcha: 'false'
+            };
+
+            try {
+                const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(CONTACT_FORM_TARGET_EMAIL)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    throw new Error('Failed to send message');
+                }
+
+                showToast('Message sent successfully!');
+                form.reset();
+            } catch (err) {
+                showToast('Message send failed. Please try again.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+

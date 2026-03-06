@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dua Abaya Palace - Elegance in Modesty</title>
+    <meta name="description" content="Discover our exclusive collection of modest fashion abayas. Elegant, luxurious, and perfect for every occasion.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+
+    <style>
+        .home-products-slider {
+            padding: 38px 0;
+            background: var(--light-beige);
+        }
+
+        [data-theme="dark"] .home-products-slider {
+            background: var(--primary-black);
+        }
+
+        .home-products-slider-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .home-products-slider-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .home-products-arrow {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--gold);
+            background: transparent;
+            color: var(--gold);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .home-products-arrow:hover {
+            background: var(--gold);
+            color: var(--white);
+        }
+
+        .home-products-track {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(210px, 240px);
+            gap: 12px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+            padding-bottom: 2px;
+        }
+
+        .home-products-track::-webkit-scrollbar {
+            display: none;
+        }
+
+        .home-products-track .product-card {
+            scroll-snap-align: start;
+            max-width: 240px;
+        }
+
+        .home-products-track .product-image {
+            height: 220px;
+        }
+
+        .home-products-track .product-image img {
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .home-products-track .product-info {
+            padding: 12px;
+        }
+
+        .home-products-track .product-title {
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .home-products-slider-head {
+                align-items: flex-end;
+            }
+
+            .home-products-track {
+                grid-auto-columns: minmax(190px, 82%);
+            }
+        }
+            .admin-hidden-link {
+            position: fixed;
+            left: 6px;
+            bottom: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.08);
+            opacity: 0.08;
+            z-index: 5;
+            text-indent: -9999px;
+            overflow: hidden;
+        }
+
+        .admin-hidden-link:hover {
+            opacity: 0.2;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-loader">
+        <div class="page-loader-spinner"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
+
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="navbar-link active" data-translate="home">Home</a></li>
+                <li><a href="shop.html" class="navbar-link" data-translate="shop">Shop</a></li>
+                <li><a href="about.html" class="navbar-link" data-translate="about">About</a></li>
+                <li><a href="contact.html" class="navbar-link" data-translate="contact">Contact</a></li>
+            </ul>
+
+            <div class="navbar-actions">
+                <div class="currency-lang-selector">
+                    <div class="currency-selector">
+                        <select id="currency-select" onchange="changeCurrency(this.value)">
+                            <option value="INR">INR</option>
+                            <option value="PKR">PKR</option>
+                            <option value="USD">USD</option>
+                            <option value="SAR">SAR</option>
+                            <option value="AED">AED</option>
+                        </select>
+                    </div>
+                    <div class="language-selector">
+                        <select id="language-select" onchange="changeLanguage(this.value)">
+                            <option value="en">English</option>
+                            <option value="ur">Urdu</option>
+                            <option value="hi">Hindi</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
+                <button class="navbar-icon theme-toggle" onclick="toggleTheme()">&#127769;</button>
+                <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
+                <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+
+        <div class="search-bar">
+            <form action="shop.html">
+                <input type="text" placeholder="Search for abayas...">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="mobile-menu">
+        <button class="mobile-menu-close"><i class="fas fa-times"></i></button>
+        <ul>
+            <li><a href="index.html" class="navbar-link" data-translate="home">Home</a></li>
+            <li><a href="shop.html" class="navbar-link" data-translate="shop">Shop</a></li>
+            <li><a href="about.html" class="navbar-link" data-translate="about">About</a></li>
+            <li><a href="contact.html" class="navbar-link" data-translate="contact">Contact</a></li>
+            <li><a href="cart.html" class="navbar-link" data-translate="cart">Cart</a></li>
+            <li><a href="account.html" class="navbar-link" data-translate="account">Account</a></li>
+        </ul>
+    </div>
+    <div class="mobile-overlay"></div>
+
+    <section class="home-products-slider">
+        <div class="container">
+            <div class="home-products-slider-head">
+                <div class="section-title" style="margin-bottom:0;">
+                    <h2>Featured Products</h2>
+                    <p>Slide left and right to browse</p>
+                </div>
+                <div class="home-products-slider-controls">
+                    <button class="home-products-arrow" type="button" id="homeProductsPrev" aria-label="Previous products">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="home-products-arrow" type="button" id="homeProductsNext" aria-label="Next products">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="home-products-track" id="homeProductsTrack"></div>
+        </div>
+    </section>
+
+<section class="hero">
+        <div class="hero-background"></div>
+        <div class="hero-container">
+            <div class="hero-content">
+                <span class="hero-tag">New Collection 2026</span>
+<p class="hero-description">Discover our exquisite collection of premium abayas for modern women who value timeless style and comfort.</p>
+                <div class="hero-buttons">
+                    <a href="shop.html" class="btn btn-primary">Shop Now</a>
+                    <a href="about.html" class="btn btn-secondary">Our Story</a>
+                </div>
+            </div>
+        </div>
+        <div class="hero-scroll">
+            <span>Scroll</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+    </section>
+
+    <section class="featured">
+        <div class="container">
+            <div class="section-title">
+                <h2>Shop by Category</h2>
+                <p>Explore our curated collections</p>
+            </div>
+            <div class="featured-grid">
+                <div class="featured-card">
+                    <div class="featured-content">
+                        <h3>Open Abaya</h3>
+                        <p>Elegant outer wear</p>
+                        <a href="shop.html?category=open" class="btn btn-primary">View Collection</a>
+                    </div>
+                </div>
+                <div class="featured-card">
+                    <div class="featured-content">
+                        <h3>Closed Abaya</h3>
+                        <p>Classic elegance</p>
+                        <a href="shop.html?category=closed" class="btn btn-primary">View Collection</a>
+                    </div>
+                </div>
+                <div class="featured-card">
+                    <div class="featured-content">
+                        <h3>Party Wear</h3>
+                        <p>Glamorous designs</p>
+                        <a href="shop.html?category=party" class="btn btn-primary">View Collection</a>
+                    </div>
+                </div>
+                <div class="featured-card">
+                    <div class="featured-content">
+                        <h3>Daily Wear</h3>
+                        <p>Comfort and style</p>
+                        <a href="shop.html" class="btn btn-primary">Explore Shop</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h3>Dua Abaya Palace</h3>
+                <p>Your destination for elegant and modest fashion. We believe every woman deserves to feel beautiful and confident.</p>
+                <div class="footer-social">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-pinterest"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul class="footer-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="shop.html">Shop</a></li>
+                    <li><a href="about.html">About Us</a></li>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Customer Service</h3>
+                <ul class="footer-links">
+                    <li><a href="#">Shipping Policy</a></li>
+                    <li><a href="#">return policy not available</a></li>
+                    <li><a href="#">FAQs</a></li>
+                    <li><a href="#">Privacy Policy</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contact Us</h3>
+                <ul class="footer-links">
+                    <li><i class="fas fa-map-marker-alt"></i> Lalitpur, U.P.</li>
+                    <li><i class="fas fa-phone"></i> +91 9415153294</li>
+                    <li><i class="fas fa-envelope"></i> tabassumnadeem.ltp@gmail.com</li>
+                    <li><i class="fab fa-whatsapp"></i> +91 9415153294</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Dua Abaya Palace. All rights reserved.</p>
+            <div class="footer-bottom-links">
+                <a href="#">Terms of Service</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Shipping</a>
+            </div>
+        </div>
+    </footer>
+
+    <div class="modal" id="quickViewModal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="quick-view-content"></div>
+        </div>
+    </div>
+
+    <div class="popup" id="welcomePopup">
+        <div class="popup-content">
+            <button class="popup-close">&times;</button>
+            <div class="popup-icon">New</div>
+            <h3>Welcome to Dua Abaya Palace!</h3>
+            <a href="shop.html" class="btn btn-primary">Shop Now</a>
+        </div>
+    </div>
+
+    <div class="toast"></div>
+
+    <button class="scroll-top" onclick="scrollToTop()">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+
+    <a href="https://wa.me/9415153294" class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <a href="admin-products.html" class="admin-hidden-link" aria-label="Admin access">Admin</a>
+
+    <script src="js/main.js"></script>
+    <script>
+        function initHomeProductSlider() {
+            const track = document.getElementById('homeProductsTrack');
+            const prevBtn = document.getElementById('homeProductsPrev');
+            const nextBtn = document.getElementById('homeProductsNext');
+            if (!track || !window.products || !window.products.length) return;
+
+            const featuredItems = window.products.slice(0, 10);
+            track.innerHTML = featuredItems.map(product => createProductCard(product)).join('');
+            updatePrices();
+
+            const step = () => Math.max(260, track.clientWidth * 0.85);
+            if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
+            if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
+        }
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.querySelector('.page-loader');
+                if (loader) loader.style.display = 'none';
+            }, 500);
+
+            initHomeProductSlider();
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+

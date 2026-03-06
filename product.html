@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details - Dua Abaya Palace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .reviews-wrap {
+            display: grid;
+            gap: 18px;
+        }
+
+        .review-admin-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
+        }
+
+        .review-form-card {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme="dark"] .review-form-card {
+            background: var(--off-white);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .review-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 140px;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .reviews-empty {
+            opacity: 0.75;
+            margin: 0;
+        }
+
+        .review-delete-btn {
+            margin-top: 10px;
+            background: #b42318;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .review-delete-btn:hover {
+            filter: brightness(1.08);
+        }
+
+        @media (max-width: 640px) {
+            .review-form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
+            <ul class="navbar-menu">
+                <li><a href="index.html" class="navbar-link">Home</a></li>
+                <li><a href="shop.html" class="navbar-link active">Shop</a></li>
+                <li><a href="about.html" class="navbar-link">About</a></li>
+                <li><a href="contact.html" class="navbar-link">Contact</a></li>
+            </ul>
+            <div class="navbar-actions">
+                <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
+                <button class="navbar-icon theme-toggle" onclick="toggleTheme()">&#127769;</button>
+                <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
+                <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
+                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+            </div>
+        </div>
+        <div class="search-bar"><form action="shop.html"><input type="text" placeholder="Search..."><button><i class="fas fa-search"></i></button></form></div>
+    </nav>
+    <div class="mobile-menu"><button class="mobile-menu-close"><i class="fas fa-times"></i></button><ul><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+    <div class="mobile-overlay"></div>
+
+    <div class="breadcrumb">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="shop.html">Shop</a></li>
+            <li>Product Details</li>
+        </ul>
+    </div>
+
+    <section class="product-detail-page">
+        <div class="product-detail-container">
+            <div class="product-detail-grid" id="productDetailGrid"></div>
+
+            <div class="product-tabs">
+                <div class="tabs-nav">
+                    <button class="tab-btn active" data-tab="description">Description</button>
+                    <button class="tab-btn" data-tab="reviews">Reviews</button>
+                    <button class="tab-btn" data-tab="shipping">Shipping Info</button>
+                </div>
+
+                <div class="tab-content active" id="description">
+                    <h3>Product Description</h3>
+                    <p id="productDescription">This exquisite abaya is crafted from premium quality fabric, designed to provide both elegance and comfort.</p>
+                    <p>Features:</p>
+                    <ul>
+                        <li>Premium quality fabric</li>
+                        <li>Available in multiple sizes</li>
+                        <li>Easy to care for</li>
+                        <li>Modest and elegant design</li>
+                    </ul>
+                </div>
+
+                <div class="tab-content" id="reviews">
+                    <h3>Customer Reviews</h3>
+                    <div class="reviews-wrap">
+                        <div class="review-admin-bar">
+                            <button type="button" class="btn btn-secondary" id="toggleReviewAdminBtn">Enable Admin</button>
+                        </div>
+
+                        <div class="testimonials-grid" id="productReviewsList" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));"></div>
+                        <p class="reviews-empty" id="productReviewsEmpty" style="display:none;">No reviews yet. Be the first to review this product.</p>
+
+                        <div class="review-form-card">
+                            <h4 style="margin-bottom: 12px;">Add Your Review</h4>
+                            <form id="productReviewForm">
+                                <div class="review-form-grid">
+                                    <div class="form-group" style="margin:0;">
+                                        <label for="reviewerName">Your Name</label>
+                                        <input type="text" id="reviewerName" required placeholder="Enter your name">
+                                    </div>
+                                    <div class="form-group" style="margin:0;">
+                                        <label for="reviewRating">Rating</label>
+                                        <select id="reviewRating" required>
+                                            <option value="5">5 - Excellent</option>
+                                            <option value="4">4 - Very Good</option>
+                                            <option value="3">3 - Good</option>
+                                            <option value="2">2 - Fair</option>
+                                            <option value="1">1 - Poor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin:0 0 14px;">
+                                    <label for="reviewComment">Your Review</label>
+                                    <textarea id="reviewComment" rows="4" required placeholder="Share your experience with this product"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Submit Review</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="shipping">
+                    <h3>Shipping Information</h3>
+                    <p>We offer free shipping on orders over $150. Standard delivery takes 5-7 business days. Express shipping available for an additional fee.</p>
+                    <p>return policy not available</p>
+                </div>
+            </div>
+
+            <div class="products-section">
+                <div class="section-title"><h2>Related Products</h2></div>
+                <div class="products-grid" id="relatedProductsGrid"></div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section"><h3>Dua Abaya Palace</h3><p>Elegant modest fashion.</p><div class="footer-social"><a href="#"><i class="fab fa-facebook-f"></i></a><a href="#"><i class="fab fa-instagram"></i></a><a href="#"><i class="fab fa-twitter"></i></a></div></div>
+            <div class="footer-section"><h3>Quick Links</h3><ul class="footer-links"><li><a href="index.html">Home</a></li><li><a href="shop.html">Shop</a></li><li><a href="about.html">About</a></li><li><a href="contact.html">Contact</a></li></ul></div>
+            <div class="footer-section"><h3>Customer Service</h3><ul class="footer-links"><li><a href="#">Shipping Policy</a></li><li><a href="#">return policy not available</a></li><li><a href="#">FAQs</a></li></ul></div>
+            <div class="footer-section"><h3>Contact</h3><ul class="footer-links"><li>Lalitpur, U.P.</li><li>+91 9415153294</li><li>tabassumnadeem.ltp@gmail.com</li></ul></div>
+        </div>
+        <div class="footer-bottom"><p>&copy; 2024 Dua Abaya Palace. All rights reserved.</p></div>
+    </footer>
+
+    <div class="toast"></div>
+    <button class="scroll-top" onclick="scrollToTop()"><i class="fas fa-chevron-up"></i></button>
+    <a href="https://wa.me/9415153294" class="whatsapp-float" target="_blank"><i class="fab fa-whatsapp"></i></a>
+
+    <script src="js/main.js"></script>
+    <script>
+        let detailQuantity = 1;
+        let selectedSize = 'S';
+        let selectedColor = 'Black';
+        let currentProductId = 1;
+        let isReviewAdmin = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeApp();
+            loadProductDetail();
+        });
+
+        function loadProductDetail() {
+            const params = new URLSearchParams(window.location.search);
+            const productId = parseInt(params.get('id')) || 1;
+            currentProductId = productId;
+            const product = getProductById(productId);
+
+            if (product) {
+                document.getElementById('productDescription').textContent = product.description;
+                renderProductDetail(product);
+                renderRelatedProducts(product.category);
+                initializeProductReviews(productId);
+            }
+        }
+
+        function renderProductDetail(product) {
+            const grid = document.getElementById('productDetailGrid');
+            grid.innerHTML = `
+                <div class="product-gallery">
+                    <div class="product-main-image"><img src="${product.image}" alt="${product.name}"></div>
+                    <div class="product-thumbnails">
+                        ${product.images.map((img, i) => `<div class="product-thumbnail ${i === 0 ? 'active' : ''}"><img src="${img}" alt=""></div>`).join('')}
+                    </div>
+                </div>
+                <div class="product-detail-info">
+                    <span class="product-detail-category">${product.category}</span>
+                    <h1 class="product-detail-title">${product.name}</h1>
+                    <div class="product-detail-price">
+                        <span class="current price-convert" data-price="${product.price}">${formatPrice(product.price)}</span>
+                        ${product.originalPrice ? `<span class="original price-convert" data-price="${product.originalPrice}">${formatPrice(product.originalPrice)}</span>` : ''}
+                        ${product.originalPrice ? `<span class="discount">-${Math.round((1 - product.price / product.originalPrice) * 100)}%</span>` : ''}
+                    </div>
+                    <p class="product-detail-description">${product.description}</p>
+
+                    <div class="product-options">
+                        <div class="product-option">
+                            <label>Size:</label>
+                            <div class="size-options">
+                                ${product.sizes.map((s, i) => `<div class="size-option ${i === 0 ? 'active' : ''}" data-size="${s}">${s}</div>`).join('')}
+                            </div>
+                        </div>
+                        <div class="product-option">
+                            <label>Color:</label>
+                            <div class="color-options">
+                                ${product.colors.map((c, i) => `<div class="color-option ${i === 0 ? 'active' : ''}" data-color="${c}" style="background: ${c.toLowerCase()}"></div>`).join('')}
+                            </div>
+                        </div>
+                        <div class="product-option">
+                            <label>Quantity:</label>
+                            <div class="product-quantity">
+                                <div class="quantity-selector">
+                                    <button onclick="updateDetailQuantity(-1)">-</button>
+                                    <span id="detailQuantity">1</span>
+                                    <button onclick="updateDetailQuantity(1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="product-actions-detail">
+                        <button class="btn btn-primary" onclick="addToCartFromDetail(${product.id})">Add to Cart</button>
+                        <button class="btn btn-secondary" onclick="toggleWishlist(${product.id})"><i class="fas fa-heart"></i></button>
+                    </div>
+
+                    <div class="product-meta">
+                        <div class="product-meta-item"><strong>SKU:</strong> <span>ABAYA-${product.id}001</span></div>
+                        <div class="product-meta-item"><strong>Category:</strong> <span>${product.category}</span></div>
+                        <div class="product-meta-item"><strong>Fabric:</strong> <span>${product.fabric}</span></div>
+                        <div class="product-meta-item"><strong>Tags:</strong> <span>Modest Fashion, Abaya, Elegant</span></div>
+                    </div>
+                </div>
+            `;
+
+            setupProductDetailOptions();
+            updatePrices();
+        }
+
+        function renderRelatedProducts(category) {
+            const related = products.filter(p => p.category === category).slice(0, 4);
+            document.getElementById('relatedProductsGrid').innerHTML = related.map(p => createProductCard(p)).join('');
+            updateWishlistButtons();
+            updatePrices();
+        }
+
+        function getReviewStorageKey(productId) {
+            return `productReviews_${productId}`;
+        }
+
+        function getDefaultReviews() {
+            return [
+                { name: 'Sarah A.', rating: 5, comment: 'Absolutely beautiful! The quality is amazing and fits perfectly.', createdAt: new Date().toISOString() },
+                { name: 'Amina K.', rating: 5, comment: 'Love this abaya! Very comfortable and elegant.', createdAt: new Date().toISOString() }
+            ];
+        }
+
+        function getProductReviews(productId) {
+            const raw = localStorage.getItem(getReviewStorageKey(productId));
+            if (!raw) return getDefaultReviews();
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function saveProductReviews(productId, reviews) {
+            localStorage.setItem(getReviewStorageKey(productId), JSON.stringify(reviews));
+        }
+
+        function renderProductReviews(productId) {
+            const list = document.getElementById('productReviewsList');
+            const empty = document.getElementById('productReviewsEmpty');
+            if (!list || !empty) return;
+
+            const reviews = getProductReviews(productId);
+            if (!reviews.length) {
+                list.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+
+            empty.style.display = 'none';
+            list.innerHTML = reviews.map((review, index) => {
+                const rating = Math.max(1, Math.min(5, Number(review.rating) || 5));
+                return `
+                    <div class="testimonial-card">
+                        <div class="testimonial-rating">${'&#9733;'.repeat(rating)}</div>
+                        <p class="testimonial-text">${review.comment}</p>
+                        <div class="testimonial-author"><div><h4>${review.name}</h4><span>Verified Buyer</span></div></div>
+                        ${isReviewAdmin ? `<button type="button" class="review-delete-btn" data-review-index="${index}">Delete Review</button>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            if (isReviewAdmin) {
+                list.querySelectorAll('.review-delete-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const idx = Number(btn.dataset.reviewIndex);
+                        if (Number.isNaN(idx)) return;
+                        deleteProductReview(productId, idx);
+                    });
+                });
+            }
+        }
+
+        function setReviewAdminMode(enabled) {
+            isReviewAdmin = !!enabled;
+            const btn = document.getElementById('toggleReviewAdminBtn');
+            if (btn) {
+                btn.textContent = isReviewAdmin ? 'Disable Admin' : 'Enable Admin';
+                btn.classList.toggle('btn-primary', isReviewAdmin);
+                btn.classList.toggle('btn-secondary', !isReviewAdmin);
+            }
+            renderProductReviews(currentProductId);
+        }
+
+        function deleteProductReview(productId, reviewIndex) {
+            const reviews = getProductReviews(productId);
+            if (reviewIndex < 0 || reviewIndex >= reviews.length) return;
+            reviews.splice(reviewIndex, 1);
+            saveProductReviews(productId, reviews);
+            renderProductReviews(productId);
+            showToast('Review deleted');
+        }
+
+        function initializeProductReviews(productId) {
+            const form = document.getElementById('productReviewForm');
+            const adminBtn = document.getElementById('toggleReviewAdminBtn');
+            if (!form) return;
+
+            if (!localStorage.getItem(getReviewStorageKey(productId))) {
+                saveProductReviews(productId, getDefaultReviews());
+            }
+
+            if (adminBtn && !adminBtn.dataset.bound) {
+                adminBtn.dataset.bound = '1';
+                adminBtn.addEventListener('click', () => {
+                    if (isReviewAdmin) {
+                        setReviewAdminMode(false);
+                        return;
+                    }
+
+                    const code = window.prompt('Enter admin code to manage reviews');
+                    if (code === 'admin9415') {
+                        setReviewAdminMode(true);
+                        showToast('Admin mode enabled');
+                    } else if (code !== null) {
+                        showToast('Invalid admin code', 'error');
+                    }
+                });
+            }
+
+            renderProductReviews(productId);
+
+            if (!form.dataset.bound) {
+                form.dataset.bound = '1';
+                form.addEventListener('submit', (event) => {
+                    event.preventDefault();
+
+                    const nameField = document.getElementById('reviewerName');
+                    const ratingField = document.getElementById('reviewRating');
+                    const commentField = document.getElementById('reviewComment');
+                    if (!nameField || !ratingField || !commentField) return;
+
+                    const name = nameField.value.trim();
+                    const comment = commentField.value.trim();
+                    const rating = Number(ratingField.value || '5');
+                    if (!name || !comment) return;
+
+                    const reviews = getProductReviews(productId);
+                    reviews.unshift({ name, rating, comment, createdAt: new Date().toISOString() });
+                    saveProductReviews(productId, reviews);
+                    renderProductReviews(productId);
+
+                    form.reset();
+                    ratingField.value = '5';
+                    showToast('Review added successfully!');
+                });
+            }
+        }
+
+        function updateDetailQuantity(change) {
+            detailQuantity = Math.max(1, detailQuantity + change);
+            document.getElementById('detailQuantity').textContent = detailQuantity;
+        }
+
+        function setupProductDetailOptions() {
+            document.querySelectorAll('.size-option').forEach(opt => {
+                opt.addEventListener('click', function() {
+                    document.querySelectorAll('.size-option').forEach(o => o.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedSize = this.dataset.size;
+                });
+            });
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.addEventListener('click', function() {
+                    document.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedColor = this.dataset.color;
+                });
+            });
+        }
+
+        function addToCartFromDetail(productId) {
+            addToCart(productId, selectedSize, selectedColor, detailQuantity);
+        }
+
+        function toggleWishlist(productId) {
+            if (isInWishlist(productId)) {
+                removeFromWishlist(productId);
+            } else {
+                addToWishlist(productId);
+            }
+        }
+
+        window.updateDetailQuantity = updateDetailQuantity;
+        window.addToCartFromDetail = addToCartFromDetail;
+        window.toggleWishlist = toggleWishlist;
+    </script>
+</body>
+</html>
