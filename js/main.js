@@ -250,15 +250,15 @@ function setupHiddenAdminAccess() {
     trigger.id = 'hiddenAdminTrigger';
     trigger.setAttribute('aria-label', 'Admin access');
     trigger.style.position = 'fixed';
-    trigger.style.top = '8px';
-    trigger.style.left = '8px';
-    trigger.style.width = '22px';
-    trigger.style.height = '22px';
+    trigger.style.top = 'calc(6px + env(safe-area-inset-top, 0px))';
+    trigger.style.left = '6px';
+    trigger.style.width = '64px';
+    trigger.style.height = '64px';
     trigger.style.opacity = '0';
     trigger.style.border = '0';
     trigger.style.background = 'transparent';
     trigger.style.zIndex = '6000';
-    trigger.style.cursor = 'default';
+    trigger.style.cursor = 'pointer';
     trigger.style.padding = '0';
 
     trigger.addEventListener('click', () => {
