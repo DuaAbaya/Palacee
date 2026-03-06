@@ -568,11 +568,13 @@ async function syncStateFromCloud() {
         if (!snapshot) return;
 
         if (snapshot.profile && currentUser && String(currentUser.id) === String(cloudSession.localId)) {
+            const normalizedSnapshotAddresses = normalizeAddressEntries(snapshot.profile.addresses);
             currentUser = {
                 ...currentUser,
                 ...snapshot.profile,
                 id: cloudSession.localId,
-                email: normalizeEmail(snapshot.profile.email || currentUser.email)
+                email: normalizeEmail(snapshot.profile.email || currentUser.email),
+                addresses: normalizedSnapshotAddresses.length ? normalizedSnapshotAddresses : normalizeAddressEntries(currentUser.addresses)
             };
         }
 
