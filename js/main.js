@@ -250,16 +250,32 @@ function setupHiddenAdminAccess() {
     trigger.id = 'hiddenAdminTrigger';
     trigger.setAttribute('aria-label', 'Admin access');
     trigger.style.position = 'fixed';
-    trigger.style.top = 'calc(6px + env(safe-area-inset-top, 0px))';
-    trigger.style.left = '6px';
-    trigger.style.width = '64px';
-    trigger.style.height = '64px';
+    trigger.style.top = '10px';
+    trigger.style.left = '10px';
+    trigger.style.width = '30px';
+    trigger.style.height = '30px';
     trigger.style.opacity = '0';
     trigger.style.border = '0';
     trigger.style.background = 'transparent';
     trigger.style.zIndex = '6000';
     trigger.style.cursor = 'pointer';
     trigger.style.padding = '0';
+
+    const positionTrigger = () => {
+        const logo = document.querySelector('.navbar-logo');
+        if (!logo) {
+            trigger.style.top = '10px';
+            trigger.style.left = '10px';
+            return;
+        }
+
+        const rect = logo.getBoundingClientRect();
+        const size = 30;
+        const top = rect.top + Math.max(0, (rect.height - size) / 2);
+        const left = rect.right + 6;
+        trigger.style.top = `${Math.max(4, top)}px`;
+        trigger.style.left = `${Math.max(4, left)}px`;
+    };
 
     trigger.addEventListener('click', () => {
         const input = prompt('Admin access code:');
@@ -278,6 +294,9 @@ function setupHiddenAdminAccess() {
     });
 
     document.body.appendChild(trigger);
+    positionTrigger();
+    window.addEventListener('resize', positionTrigger);
+    window.addEventListener('scroll', positionTrigger, { passive: true });
 }
 
 function safeJSONParse(raw, fallback) {
