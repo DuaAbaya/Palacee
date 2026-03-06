@@ -253,6 +253,23 @@ function notifyUserStateUpdated() {
     }
 }
 
+function getProfileCacheKey(userId = getCurrentUserId()) {
+    const id = String(userId || '').trim();
+    return id ? `profile_${id}` : '';
+}
+
+function saveProfileCache(profile, userId = getCurrentUserId()) {
+    const key = getProfileCacheKey(userId);
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify(profile || {}));
+}
+
+function loadProfileCache(userId = getCurrentUserId()) {
+    const key = getProfileCacheKey(userId);
+    if (!key) return null;
+    return safeJSONParse(localStorage.getItem(key), null);
+}
+
 function normalizeAddressEntries(input) {
     if (!Array.isArray(input)) return [];
     return input.map(entry => {
@@ -576,6 +593,7 @@ async function syncStateFromCloud() {
                 email: normalizeEmail(snapshot.profile.email || currentUser.email),
                 addresses: normalizedSnapshotAddresses.length ? normalizedSnapshotAddresses : normalizeAddressEntries(currentUser.addresses)
             };
+            saveProfileCache(currentUser, cloudSession.localId);
         }
 
         if (Array.isArray(snapshot.cart)) {
@@ -631,13 +649,14 @@ function setCurrentUserById(userId) {
     }
 
     if (isCloudSyncEnabled() && cloudSession && String(cloudSession.localId) === nextId) {
+        const cachedProfile = loadProfileCache(nextId) || {};
         currentUser = currentUser && String(currentUser.id) === nextId ? currentUser : {
             id: nextId,
-            firstName: '',
-            lastName: '',
-            email: normalizeEmail(cloudSession.email || ''),
-            phone: '',
-            addresses: []
+            firstName: String(cachedProfile.firstName || '').trim(),
+            lastName: String(cachedProfile.lastName || '').trim(),
+            email: normalizeEmail(cachedProfile.email || cloudSession.email || ''),
+            phone: String(cachedProfile.phone || '').trim(),
+            addresses: normalizeAddressEntries(cachedProfile.addresses)
         };
         localStorage.setItem(AUTH_SESSION_KEY, nextId);
         localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
@@ -649,6 +668,7 @@ function setCurrentUserById(userId) {
     currentUser = user;
     if (user) {
         currentUser.addresses = normalizeAddressEntries(currentUser.addresses);
+        saveProfileCache(currentUser, user.id);
         localStorage.setItem(AUTH_SESSION_KEY, String(user.id));
         localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
     } else {
@@ -774,6 +794,7 @@ async function registerAccount(payload) {
             localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
             mergeGuestDataIntoUser();
             hydrateUserState();
+            saveProfileCache(currentUser, user.id);
 
             await saveCloudUserField('profile', user);
             await saveCloudUserField('cart', cart);
@@ -810,6 +831,7 @@ async function registerAccount(payload) {
     setCurrentUserById(user.id);
     mergeGuestDataIntoUser();
     hydrateUserState();
+    saveProfileCache(currentUser, user.id);
     return { ok: true, user };
 }
 
@@ -840,6 +862,7 @@ async function loginAccount(email, password) {
                 addresses: normalizeAddressEntries(profile.addresses),
                 createdAt: profile.createdAt || new Date().toISOString()
             };
+            saveProfileCache(currentUser, auth.localId);
 
             localStorage.setItem(AUTH_SESSION_KEY, currentUser.id);
             localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
@@ -878,6 +901,7 @@ async function loginAccount(email, password) {
     setCurrentUserById(user.id);
     mergeGuestDataIntoUser();
     hydrateUserState();
+    saveProfileCache(currentUser, user.id);
     return { ok: true, user };
 }
 
@@ -902,6 +926,7 @@ async function updateCurrentUserProfile(patch = {}) {
             };
             currentUser = nextUser;
             await saveCloudUserField('profile', nextUser);
+            saveProfileCache(currentUser, currentUser.id);
             return { ok: true, user: currentUser };
         } catch (error) {
             return { ok: false, message: error.message || 'Profile update failed.' };
@@ -926,6 +951,7 @@ async function updateCurrentUserProfile(patch = {}) {
     };
     saveUsers(users);
     setCurrentUserById(users[index].id);
+    saveProfileCache(currentUser, users[index].id);
     return { ok: true, user: currentUser };
 }
 

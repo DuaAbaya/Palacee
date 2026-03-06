@@ -228,6 +228,13 @@
             initializeApp();
             setupAccountTabs();
             syncAccountView();
+            window.addEventListener('userStateUpdated', () => {
+                if (isUserLoggedIn()) {
+                    renderProfile();
+                    renderAddresses();
+                    renderOrders();
+                }
+            });
         });
 
         function setupAccountTabs() {
