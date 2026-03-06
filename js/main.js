@@ -186,6 +186,8 @@ const AUTH_SESSION_KEY = 'authSessionUserId';
 const LEGACY_LOGIN_FLAG_KEY = 'isLoggedIn';
 const LEGACY_CART_KEY = 'cart';
 const LEGACY_WISHLIST_KEY = 'wishlist';
+const ADMIN_MODE_KEY = 'dapAdminMode';
+const ADMIN_SECRET_CODE = 'DAP-ADMIN-786';
 
 let cart = [];
 let wishlist = [];
@@ -231,6 +233,45 @@ const CLOUD_SYNC_CONFIG = {
 const CLOUD_SESSION_KEY = 'cloudAuthSession';
 let cloudSession = safeJSONParse(localStorage.getItem(CLOUD_SESSION_KEY), null);
 let cloudSyncTemporarilyDisabled = false;
+
+function isAdminModeEnabled() {
+    return localStorage.getItem(ADMIN_MODE_KEY) === 'true';
+}
+
+function setAdminModeEnabled(enabled) {
+    localStorage.setItem(ADMIN_MODE_KEY, enabled ? 'true' : 'false');
+}
+
+function setupHiddenAdminAccess() {
+    const logo = document.querySelector('.navbar-logo');
+    if (!logo) return;
+
+    let taps = 0;
+    let timer = null;
+    logo.addEventListener('click', () => {
+        taps += 1;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+            taps = 0;
+        }, 1800);
+
+        if (taps < 5) return;
+        taps = 0;
+        const input = prompt('Admin access code:');
+        if (input === null) return;
+        const value = String(input).trim();
+        if (value === ADMIN_SECRET_CODE) {
+            const next = !isAdminModeEnabled();
+            setAdminModeEnabled(next);
+            showToast(next ? 'Admin mode enabled.' : 'Admin mode disabled.');
+            if (document.querySelector('.products-grid, .shop-products-grid')) {
+                renderProducts();
+            }
+        } else {
+            showToast('Invalid admin code.', 'error');
+        }
+    });
+}
 
 function safeJSONParse(raw, fallback) {
     if (!raw) return fallback;
@@ -1044,6 +1085,45 @@ function removeAdminProduct(productId) {
     }
     return true;
 }
+
+function removeProductAsAdmin(productId) {
+    if (!isAdminModeEnabled()) {
+        showToast('Admin access required.', 'error');
+        return;
+    }
+
+    const targetId = Number(productId);
+    const target = products.find(product => Number(product.id) === targetId);
+    if (!target) {
+        showToast('Product not found.', 'error');
+        return;
+    }
+
+    if (!target.isCustom) {
+        showToast('Only admin-added custom products can be removed.', 'error');
+        return;
+    }
+
+    if (!confirm('Remove this product?')) return;
+
+    const removed = removeAdminProduct(targetId);
+    if (!removed) {
+        showToast('Unable to remove product.', 'error');
+        return;
+    }
+
+    cart = cart.filter(item => Number(item.id) !== targetId);
+    wishlist = wishlist.filter(item => Number(item.id) !== targetId);
+    saveCart();
+    saveWishlist();
+    updateCartCount();
+    updateWishlistCount();
+    renderProducts();
+    if (typeof renderWishlist === 'function') renderWishlist();
+    if (typeof renderCart === 'function') renderCart();
+    showToast('Product removed.');
+}
+
 function initializeApp() {
     loadCustomProducts();
     migrateLegacyGuestData();
@@ -1583,6 +1663,9 @@ function setupEventListeners() {
     
     // Theme toggle
     setupThemeToggle();
+
+    // Hidden admin mode access
+    setupHiddenAdminAccess();
 }
 
 // ============================================
@@ -1961,6 +2044,7 @@ function renderProducts(productsToRender = products) {
 
 function createProductCard(product) {
     const isWishlisted = isInWishlist(product.id);
+    const showAdminRemove = isAdminModeEnabled() && product.isCustom;
     return `
         <div class="product-card">
             <div class="product-image">
@@ -1977,6 +2061,11 @@ function createProductCard(product) {
                     <button class="product-action-btn" onclick="openQuickView(${product.id})">
                         👁
                     </button>
+                    ${showAdminRemove ? `
+                    <button class="product-action-btn" onclick="removeProductAsAdmin(${product.id})" title="Remove product">
+                        ?
+                    </button>
+                    ` : ''}
                 </div>
                 <div class="product-quick-view" onclick="openQuickView(${product.id})">
                     Quick View
@@ -2121,6 +2210,7 @@ window.products = products;
 window.getAdminProducts = getStoredCustomProducts;
 window.addAdminProduct = addAdminProduct;
 window.removeAdminProduct = removeAdminProduct;
+window.removeProductAsAdmin = removeProductAsAdmin;
 window.registerAccount = registerAccount;
 window.loginAccount = loginAccount;
 window.logoutAccount = logoutAccount;
@@ -2130,6 +2220,7 @@ window.getUserOrders = getUserOrders;
 window.updateCurrentUserProfile = updateCurrentUserProfile;
 window.saveOrderHistory = saveOrderHistory;
 window.runCloudDiagnostics = runCloudDiagnostics;
+
 
 
 
