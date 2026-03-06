@@ -157,7 +157,49 @@
                         <div class="form-section">
                             <h3>My Addresses</h3>
                             <div id="accountAddressesList" style="margin-bottom: 15px;"></div>
-                            <button type="button" class="btn btn-secondary" onclick="addNewAddress()">Add New Address</button>
+                            <button type="button" class="btn btn-secondary" onclick="openAddressForm()">Add New Address</button>
+                            <form id="addressForm" onsubmit="saveAddressFromForm(event)" style="display: none; margin-top: 15px; padding: 14px; border: 1px solid var(--gray-light); border-radius: var(--radius-md);">
+                                <div class="form-group">
+                                    <label>Address Label</label>
+                                    <input type="text" id="addressLabel" placeholder="Home / Office" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Address Line 1</label>
+                                    <input type="text" id="addressLine1" placeholder="House no, street" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Address Line 2 (optional)</label>
+                                    <input type="text" id="addressLine2" placeholder="Area, landmark">
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>City</label>
+                                        <input type="text" id="addressCity" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>State</label>
+                                        <input type="text" id="addressState" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Postal Code</label>
+                                        <input type="text" id="addressPostal" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Country</label>
+                                        <input type="text" id="addressCountry" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="text" id="addressPhone" placeholder="+91..." required>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="submit" class="btn btn-primary">Save Address</button>
+                                    <button type="button" class="btn btn-secondary" onclick="cancelAddressForm()">Cancel</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                     
@@ -335,20 +377,39 @@
             `).join('');
         }
 
-        async function addNewAddress() {
+        function openAddressForm() {
+            const form = document.getElementById('addressForm');
+            if (!form) return;
+            form.style.display = 'block';
+            document.getElementById('addressLabel')?.focus();
+        }
+
+        function cancelAddressForm() {
+            const form = document.getElementById('addressForm');
+            if (!form) return;
+            form.reset();
+            form.style.display = 'none';
+        }
+
+        async function saveAddressFromForm(event) {
+            event.preventDefault();
             const user = getActiveUser();
             if (!user) return;
 
-            const value = prompt('Enter full address:');
-            if (value === null) return;
-            const address = value.trim();
-            if (!address) {
-                showToast('Address cannot be empty.', 'error');
-                return;
-            }
+            const label = document.getElementById('addressLabel').value.trim();
+            const line1 = document.getElementById('addressLine1').value.trim();
+            const line2 = document.getElementById('addressLine2').value.trim();
+            const city = document.getElementById('addressCity').value.trim();
+            const state = document.getElementById('addressState').value.trim();
+            const postal = document.getElementById('addressPostal').value.trim();
+            const country = document.getElementById('addressCountry').value.trim();
+            const phone = document.getElementById('addressPhone').value.trim();
+
+            const addressParts = [line1, line2, `${city}, ${state} ${postal}`, country, `Phone: ${phone}`].filter(Boolean);
+            const formattedAddress = `${label}\n${addressParts.join('\n')}`;
 
             const addresses = Array.isArray(user.addresses) ? [...user.addresses] : [];
-            addresses.push(address);
+            addresses.push(formattedAddress);
 
             const result = await updateCurrentUserProfile({ addresses });
             if (!result.ok) {
@@ -357,7 +418,8 @@
             }
 
             renderAddresses();
-            showToast('Address added.');
+            cancelAddressForm();
+            showToast('Address saved.');
         }
 
         async function removeAddress(index) {
