@@ -245,6 +245,14 @@ function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
 }
 
+function notifyUserStateUpdated() {
+    try {
+        window.dispatchEvent(new Event('userStateUpdated'));
+    } catch (error) {
+        // ignore
+    }
+}
+
 function normalizeAddressEntries(input) {
     if (!Array.isArray(input)) return [];
     return input.map(entry => {
@@ -586,6 +594,7 @@ async function syncStateFromCloud() {
 
         updateCartCount();
         updateWishlistCount();
+        notifyUserStateUpdated();
         if (typeof renderCart === 'function') renderCart();
         if (typeof renderWishlist === 'function') renderWishlist();
     } catch (error) {
@@ -679,6 +688,7 @@ function hydrateUserState() {
     setCurrentUserById(getCurrentUserId());
     cart = loadScopedList('cart');
     wishlist = loadScopedList('wishlist');
+    notifyUserStateUpdated();
 }
 
 function mergeGuestDataIntoUser() {

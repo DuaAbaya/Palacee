@@ -276,6 +276,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeApp();
             prefillCheckoutUser();
+            window.addEventListener('userStateUpdated', prefillCheckoutUser);
             renderCheckoutSummary();
             setupPaymentMethods();
             setupPaymentPopup();
