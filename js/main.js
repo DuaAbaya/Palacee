@@ -245,6 +245,61 @@ function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
 }
 
+function normalizeAddressEntries(input) {
+    if (!Array.isArray(input)) return [];
+    return input.map(entry => {
+        if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+            const label = String(entry.label || '').trim();
+            const line1 = String(entry.line1 || '').trim();
+            const line2 = String(entry.line2 || '').trim();
+            const city = String(entry.city || '').trim();
+            const state = String(entry.state || '').trim();
+            const postalCode = String(entry.postalCode || '').trim();
+            const country = String(entry.country || '').trim();
+            const phone = String(entry.phone || '').trim();
+            return {
+                label: label || 'Address',
+                line1,
+                line2,
+                city,
+                state,
+                postalCode,
+                country,
+                phone
+            };
+        }
+
+        const raw = String(entry || '').trim();
+        if (!raw) return null;
+        const lines = raw.split('\n').map(item => item.trim()).filter(Boolean);
+        if (!lines.length) return null;
+        const label = lines[0] || 'Address';
+        const line1 = lines[1] || '';
+        const line2 = lines[2] || '';
+        let city = '';
+        let state = '';
+        let postalCode = '';
+        let country = '';
+        let phone = '';
+
+        const cityStatePostal = lines[3] || '';
+        const cspMatch = cityStatePostal.match(/^(.+?),\s*(.+?)\s+(\S+)$/);
+        if (cspMatch) {
+            city = cspMatch[1];
+            state = cspMatch[2];
+            postalCode = cspMatch[3];
+        } else {
+            city = cityStatePostal;
+        }
+
+        country = lines[4] || '';
+        const phoneLine = lines.find(item => item.toLowerCase().startsWith('phone:')) || '';
+        phone = phoneLine.replace(/^phone:\s*/i, '').trim();
+
+        return { label, line1, line2, city, state, postalCode, country, phone };
+    }).filter(Boolean);
+}
+
 function isCloudSyncEnabled() {
     return Boolean(
         !cloudSyncTemporarilyDisabled &&
@@ -528,6 +583,7 @@ function setCurrentUserById(userId) {
     const user = users.find(item => String(item.id) === nextId) || null;
     currentUser = user;
     if (user) {
+        currentUser.addresses = normalizeAddressEntries(currentUser.addresses);
         localStorage.setItem(AUTH_SESSION_KEY, String(user.id));
         localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
     } else {
@@ -715,7 +771,7 @@ async function loginAccount(email, password) {
                 lastName: String(profile.lastName || '').trim(),
                 email: normalizeEmail(profile.email || email),
                 phone: String(profile.phone || '').trim(),
-                addresses: Array.isArray(profile.addresses) ? profile.addresses : [],
+                addresses: normalizeAddressEntries(profile.addresses),
                 createdAt: profile.createdAt || new Date().toISOString()
             };
 
@@ -776,7 +832,7 @@ async function updateCurrentUserProfile(patch = {}) {
                 lastName: String(patch.lastName ?? currentUser.lastName).trim(),
                 phone: String(patch.phone ?? currentUser.phone).trim(),
                 email: normalizeEmail(patch.email || currentUser.email),
-                addresses: Array.isArray(patch.addresses) ? patch.addresses.map(item => String(item).trim()).filter(Boolean) : (Array.isArray(currentUser.addresses) ? currentUser.addresses : [])
+                addresses: Array.isArray(patch.addresses) ? normalizeAddressEntries(patch.addresses) : normalizeAddressEntries(currentUser.addresses)
             };
             currentUser = nextUser;
             await saveCloudUserField('profile', nextUser);
@@ -800,7 +856,7 @@ async function updateCurrentUserProfile(patch = {}) {
         lastName: String(patch.lastName ?? users[index].lastName).trim(),
         phone: String(patch.phone ?? users[index].phone).trim(),
         email: nextEmail,
-        addresses: Array.isArray(patch.addresses) ? patch.addresses.map(item => String(item).trim()).filter(Boolean) : (Array.isArray(users[index].addresses) ? users[index].addresses : [])
+        addresses: Array.isArray(patch.addresses) ? normalizeAddressEntries(patch.addresses) : normalizeAddressEntries(users[index].addresses)
     };
     saveUsers(users);
     setCurrentUserById(users[index].id);

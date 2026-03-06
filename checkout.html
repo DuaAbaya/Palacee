@@ -290,11 +290,44 @@
             const lastNameInput = document.querySelector('[name="lastName"]');
             const emailInput = document.querySelector('[name="email"]');
             const phoneInput = document.querySelector('[name="phone"]');
+            const streetInput = document.querySelector('[name="street"]');
+            const apartmentInput = document.querySelector('[name="apartment"]');
+            const cityInput = document.querySelector('[name="city"]');
+            const stateInput = document.querySelector('[name="state"]');
+            const postalInput = document.querySelector('[name="postalCode"]');
+            const countryInput = document.querySelector('[name="country"]');
 
             if (firstNameInput && !firstNameInput.value) firstNameInput.value = user.firstName || '';
             if (lastNameInput && !lastNameInput.value) lastNameInput.value = user.lastName || '';
             if (emailInput && !emailInput.value) emailInput.value = user.email || '';
             if (phoneInput && !phoneInput.value) phoneInput.value = user.phone || '';
+
+            const addresses = Array.isArray(user.addresses) ? user.addresses : [];
+            const preferred = addresses.length ? addresses[addresses.length - 1] : null;
+            if (!preferred || typeof preferred !== 'object') return;
+
+            if (phoneInput && !phoneInput.value) phoneInput.value = preferred.phone || user.phone || '';
+            if (streetInput && !streetInput.value) streetInput.value = preferred.line1 || '';
+            if (apartmentInput && !apartmentInput.value) apartmentInput.value = preferred.line2 || '';
+            if (cityInput && !cityInput.value) cityInput.value = preferred.city || '';
+            if (stateInput && !stateInput.value) stateInput.value = preferred.state || '';
+            if (postalInput && !postalInput.value) postalInput.value = preferred.postalCode || '';
+
+            if (countryInput && !countryInput.value && preferred.country) {
+                const countryText = String(preferred.country).trim().toLowerCase();
+                const map = {
+                    'united arab emirates': 'AE',
+                    'uae': 'AE',
+                    'saudi arabia': 'SA',
+                    'pakistan': 'PK',
+                    'india': 'IN',
+                    'united states': 'US',
+                    'usa': 'US',
+                    'united kingdom': 'UK',
+                    'uk': 'UK'
+                };
+                countryInput.value = map[countryText] || preferred.country || '';
+            }
         }
 
         function renderCheckoutSummary() {

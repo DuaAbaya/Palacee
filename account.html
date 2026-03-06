@@ -370,7 +370,14 @@
             container.innerHTML = addresses.map((address, index) => `
                 <div style="padding: 14px; border: 1px solid var(--gray-light); border-radius: var(--radius-md); margin-bottom: 10px;">
                     <div style="display: flex; justify-content: space-between; gap: 10px; align-items: start;">
-                        <div style="color: var(--gray-dark); line-height: 1.5;">${address.replace(/\n/g, '<br>')}</div>
+                        <div style="color: var(--gray-dark); line-height: 1.5;">
+                            <strong>${address.label || 'Address'}</strong><br>
+                            ${address.line1 || ''}${address.line1 ? '<br>' : ''}
+                            ${address.line2 || ''}${address.line2 ? '<br>' : ''}
+                            ${[address.city, address.state, address.postalCode].filter(Boolean).join(', ')}${([address.city, address.state, address.postalCode].filter(Boolean).length ? '<br>' : '')}
+                            ${address.country || ''}${address.country ? '<br>' : ''}
+                            ${address.phone ? `Phone: ${address.phone}` : ''}
+                        </div>
                         <button type="button" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.78rem;" onclick="removeAddress(${index})">Remove</button>
                     </div>
                 </div>
@@ -405,11 +412,17 @@
             const country = document.getElementById('addressCountry').value.trim();
             const phone = document.getElementById('addressPhone').value.trim();
 
-            const addressParts = [line1, line2, `${city}, ${state} ${postal}`, country, `Phone: ${phone}`].filter(Boolean);
-            const formattedAddress = `${label}\n${addressParts.join('\n')}`;
-
             const addresses = Array.isArray(user.addresses) ? [...user.addresses] : [];
-            addresses.push(formattedAddress);
+            addresses.push({
+                label,
+                line1,
+                line2,
+                city,
+                state,
+                postalCode: postal,
+                country,
+                phone
+            });
 
             const result = await updateCurrentUserProfile({ addresses });
             if (!result.ok) {
