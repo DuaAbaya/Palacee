@@ -260,11 +260,17 @@ function disableCloudSyncForSession(reason) {
 
 function mapCloudAuthError(message) {
     const code = String(message || '').trim();
+    if (code === 'NETWORK_REQUEST_FAILED' || code === 'Failed to fetch') {
+        return 'Network request failed. Check internet, API key restrictions, and run site on localhost/https.';
+    }
     if (code === 'CONFIGURATION_NOT_FOUND') {
-        return 'Firebase Authentication setup incomplete. Using local account mode for now.';
+        return 'Firebase Authentication setup incomplete (CONFIGURATION_NOT_FOUND). Enable Email/Password sign-in in Firebase Auth.';
     }
     if (code === 'OPERATION_NOT_ALLOWED') {
-        return 'Email/Password login is disabled in Firebase Auth. Using local account mode for now.';
+        return 'Email/Password login is disabled in Firebase Auth (OPERATION_NOT_ALLOWED).';
+    }
+    if (code === 'API_KEY_HTTP_REFERRER_BLOCKED') {
+        return 'Firebase API key is restricted for this domain/device (API_KEY_HTTP_REFERRER_BLOCKED).';
     }
     if (code === 'INVALID_LOGIN_CREDENTIALS') {
         return 'Invalid email or password.';
@@ -294,11 +300,16 @@ async function firebaseAuthRequest(endpoint, payload) {
     if (!isCloudSyncEnabled()) {
         throw new Error('Cloud sync not configured.');
     }
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${CLOUD_SYNC_CONFIG.firebaseApiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
+    let response;
+    try {
+        response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${CLOUD_SYNC_CONFIG.firebaseApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    } catch (error) {
+        throw new Error('NETWORK_REQUEST_FAILED');
+    }
     const data = await response.json();
     if (!response.ok) {
         throw new Error(data?.error?.message || 'Cloud auth failed.');
@@ -310,7 +321,7 @@ function getDatabaseBaseUrls() {
     const candidates = [];
     const explicit = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
     if (explicit) {
-        candidates.push(explicit);
+        return [explicit];
     }
     const projectId = String(CLOUD_SYNC_CONFIG.firebaseProjectId || '').trim();
     if (projectId) {
@@ -356,6 +367,71 @@ async function firebaseDbRequest(path, method = 'GET', body = null) {
         }
     }
     throw lastError || new Error('Cloud data request failed.');
+}
+
+async function runCloudDiagnostics() {
+    const result = {
+        cloudEnabled: isCloudSyncEnabled(),
+        auth: { ok: false, detail: '' },
+        database: { ok: false, detail: '' }
+    };
+
+    if (!CLOUD_SYNC_CONFIG.firebaseApiKey) {
+        result.auth.detail = 'Missing firebaseApiKey in CLOUD_SYNC_CONFIG.';
+        result.database.detail = 'Skipped because firebaseApiKey is missing.';
+        return result;
+    }
+
+    const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${CLOUD_SYNC_CONFIG.firebaseApiKey}`;
+    try {
+        const authResponse = await fetch(authUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                identifier: 'diagnostic@example.com',
+                continueUri: 'https://duaabaya.github.io/Palacee/'
+            })
+        });
+
+        const authText = await authResponse.text();
+        const authData = authText ? safeJSONParse(authText, null) : null;
+        if (authResponse.ok) {
+            result.auth.ok = true;
+            result.auth.detail = 'Firebase Auth endpoint reachable.';
+        } else {
+            result.auth.detail = authData?.error?.message || `Auth failed (${authResponse.status})`;
+        }
+    } catch (error) {
+        result.auth.detail = 'Auth request failed (network/CORS/referrer block).';
+    }
+
+    const dbUrls = getDatabaseBaseUrls();
+    if (!dbUrls.length) {
+        result.database.detail = 'Missing firebaseDatabaseUrl/firebaseProjectId.';
+        return result;
+    }
+
+    let dbError = '';
+    for (const baseUrl of dbUrls) {
+        try {
+            const dbResponse = await fetch(`${baseUrl}/.json`, { method: 'GET' });
+            const dbText = await dbResponse.text();
+            const dbData = dbText ? safeJSONParse(dbText, null) : null;
+            if (dbResponse.ok) {
+                result.database.ok = true;
+                result.database.detail = `Realtime DB reachable at ${baseUrl}`;
+                break;
+            }
+            dbError = dbData?.error || `RTDB failed (${dbResponse.status}) at ${baseUrl}`;
+        } catch (error) {
+            dbError = `RTDB request failed at ${baseUrl}`;
+        }
+    }
+
+    if (!result.database.ok) {
+        result.database.detail = dbError || 'Realtime DB request failed.';
+    }
+    return result;
 }
 
 async function loadCloudUserSnapshot() {
@@ -440,7 +516,8 @@ function setCurrentUserById(userId) {
             firstName: '',
             lastName: '',
             email: normalizeEmail(cloudSession.email || ''),
-            phone: ''
+            phone: '',
+            addresses: []
         };
         localStorage.setItem(AUTH_SESSION_KEY, nextId);
         localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
@@ -559,6 +636,7 @@ async function registerAccount(payload) {
                 lastName: String(payload.lastName || '').trim(),
                 email,
                 phone: String(payload.phone || '').trim(),
+                addresses: [],
                 createdAt: new Date().toISOString()
             };
 
@@ -584,12 +662,7 @@ async function registerAccount(payload) {
             return { ok: true, user };
         } catch (error) {
             const friendly = mapCloudAuthError(error.message || '');
-            if (String(error.message || '').trim() === 'CONFIGURATION_NOT_FOUND' || String(error.message || '').trim() === 'OPERATION_NOT_ALLOWED') {
-                disableCloudSyncForSession(error.message || 'cloud auth config missing');
-                // Continue using local fallback registration below.
-            } else {
-                return { ok: false, message: friendly };
-            }
+            return { ok: false, message: friendly };
         }
     }
 
@@ -606,6 +679,7 @@ async function registerAccount(payload) {
         lastName: String(payload.lastName || '').trim(),
         email,
         phone: String(payload.phone || '').trim(),
+        addresses: [],
         password: String(payload.password || ''),
         createdAt: new Date().toISOString()
     };
@@ -641,6 +715,7 @@ async function loginAccount(email, password) {
                 lastName: String(profile.lastName || '').trim(),
                 email: normalizeEmail(profile.email || email),
                 phone: String(profile.phone || '').trim(),
+                addresses: Array.isArray(profile.addresses) ? profile.addresses : [],
                 createdAt: profile.createdAt || new Date().toISOString()
             };
 
@@ -668,12 +743,7 @@ async function loginAccount(email, password) {
             return { ok: true, user: currentUser };
         } catch (error) {
             const friendly = mapCloudAuthError(error.message || '');
-            if (String(error.message || '').trim() === 'CONFIGURATION_NOT_FOUND' || String(error.message || '').trim() === 'OPERATION_NOT_ALLOWED') {
-                disableCloudSyncForSession(error.message || 'cloud auth config missing');
-                // Continue using local fallback login below.
-            } else {
-                return { ok: false, message: friendly };
-            }
+            return { ok: false, message: friendly };
         }
     }
 
@@ -705,7 +775,8 @@ async function updateCurrentUserProfile(patch = {}) {
                 firstName: String(patch.firstName ?? currentUser.firstName).trim(),
                 lastName: String(patch.lastName ?? currentUser.lastName).trim(),
                 phone: String(patch.phone ?? currentUser.phone).trim(),
-                email: normalizeEmail(patch.email || currentUser.email)
+                email: normalizeEmail(patch.email || currentUser.email),
+                addresses: Array.isArray(patch.addresses) ? patch.addresses.map(item => String(item).trim()).filter(Boolean) : (Array.isArray(currentUser.addresses) ? currentUser.addresses : [])
             };
             currentUser = nextUser;
             await saveCloudUserField('profile', nextUser);
@@ -728,7 +799,8 @@ async function updateCurrentUserProfile(patch = {}) {
         firstName: String(patch.firstName ?? users[index].firstName).trim(),
         lastName: String(patch.lastName ?? users[index].lastName).trim(),
         phone: String(patch.phone ?? users[index].phone).trim(),
-        email: nextEmail
+        email: nextEmail,
+        addresses: Array.isArray(patch.addresses) ? patch.addresses.map(item => String(item).trim()).filter(Boolean) : (Array.isArray(users[index].addresses) ? users[index].addresses : [])
     };
     saveUsers(users);
     setCurrentUserById(users[index].id);
@@ -1909,6 +1981,7 @@ window.getCurrentUser = () => currentUser;
 window.getUserOrders = getUserOrders;
 window.updateCurrentUserProfile = updateCurrentUserProfile;
 window.saveOrderHistory = saveOrderHistory;
+window.runCloudDiagnostics = runCloudDiagnostics;
 
 
 

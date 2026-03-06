@@ -39,6 +39,9 @@
                 <button class="account-tab active" data-tab="login">Login</button>
                 <button class="account-tab" data-tab="register">Register</button>
             </div>
+            <div style="text-align: right; margin-bottom: 14px;">
+                <button type="button" class="btn btn-secondary" onclick="runSyncTest()">Run Sync Test</button>
+            </div>
             
             <!-- Login Form -->
             <div class="account-form-container" id="loginForm">
@@ -153,11 +156,8 @@
                         
                         <div class="form-section">
                             <h3>My Addresses</h3>
-                            <div style="padding: 20px; border: 1px solid var(--gray-light); border-radius: var(--radius-md); margin-bottom: 15px;">
-                                <h4 style="margin-bottom: 10px;">Home Address</h4>
-                                <p style="color: var(--gray); font-size: 0.9rem;">123 Main Street<br>Dubai, UAE<br>+971 50 123 4567</p>
-                            </div>
-                            <button class="btn btn-secondary">Add New Address</button>
+                            <div id="accountAddressesList" style="margin-bottom: 15px;"></div>
+                            <button type="button" class="btn btn-secondary" onclick="addNewAddress()">Add New Address</button>
                         </div>
                     </div>
                     
@@ -224,6 +224,7 @@
                 renderProfile();
                 renderOrders();
                 renderWishlistSection();
+                renderAddresses();
             }
         }
 
@@ -313,6 +314,70 @@
             showToast('Profile updated.');
         }
 
+        function renderAddresses() {
+            const container = document.getElementById('accountAddressesList');
+            const user = getActiveUser();
+            if (!container || !user) return;
+
+            const addresses = Array.isArray(user.addresses) ? user.addresses : [];
+            if (!addresses.length) {
+                container.innerHTML = '<p style="color: var(--gray);">No address added yet.</p>';
+                return;
+            }
+
+            container.innerHTML = addresses.map((address, index) => `
+                <div style="padding: 14px; border: 1px solid var(--gray-light); border-radius: var(--radius-md); margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; gap: 10px; align-items: start;">
+                        <div style="color: var(--gray-dark); line-height: 1.5;">${address.replace(/\n/g, '<br>')}</div>
+                        <button type="button" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.78rem;" onclick="removeAddress(${index})">Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addNewAddress() {
+            const user = getActiveUser();
+            if (!user) return;
+
+            const value = prompt('Enter full address:');
+            if (value === null) return;
+            const address = value.trim();
+            if (!address) {
+                showToast('Address cannot be empty.', 'error');
+                return;
+            }
+
+            const addresses = Array.isArray(user.addresses) ? [...user.addresses] : [];
+            addresses.push(address);
+
+            const result = await updateCurrentUserProfile({ addresses });
+            if (!result.ok) {
+                showToast(result.message, 'error');
+                return;
+            }
+
+            renderAddresses();
+            showToast('Address added.');
+        }
+
+        async function removeAddress(index) {
+            const user = getActiveUser();
+            if (!user) return;
+
+            const addresses = Array.isArray(user.addresses) ? [...user.addresses] : [];
+            if (index < 0 || index >= addresses.length) return;
+            addresses.splice(index, 1);
+
+            const result = await updateCurrentUserProfile({ addresses });
+            if (!result.ok) {
+                showToast(result.message, 'error');
+                return;
+            }
+
+            renderAddresses();
+            showToast('Address removed.');
+        }
+
         function renderOrders() {
             const container = document.getElementById('accountOrdersList');
             if (!container) return;
@@ -338,6 +403,38 @@
 
             container.classList.add('wishlist-products');
             renderWishlist();
+        }
+
+        async function runSyncTest() {
+            if (!window.runCloudDiagnostics) {
+                showToast('Diagnostics not available.', 'error');
+                return;
+            }
+
+            const testBtn = document.querySelector('button[onclick="runSyncTest()"]');
+            const previous = testBtn ? testBtn.textContent : '';
+            if (testBtn) {
+                testBtn.disabled = true;
+                testBtn.textContent = 'Testing...';
+            }
+
+            try {
+                const report = await runCloudDiagnostics();
+                const lines = [
+                    `Cloud Enabled: ${report.cloudEnabled ? 'Yes' : 'No'}`,
+                    `Auth: ${report.auth.ok ? 'OK' : 'Fail'} - ${report.auth.detail}`,
+                    `Database: ${report.database.ok ? 'OK' : 'Fail'} - ${report.database.detail}`
+                ];
+                alert(lines.join('\n'));
+                showToast(report.auth.ok && report.database.ok ? 'Sync test passed' : 'Sync test failed', report.auth.ok && report.database.ok ? 'success' : 'error');
+            } catch (error) {
+                showToast('Sync test failed to run.', 'error');
+            } finally {
+                if (testBtn) {
+                    testBtn.disabled = false;
+                    testBtn.textContent = previous || 'Run Sync Test';
+                }
+            }
         }
     </script>
 </body>
