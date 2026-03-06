@@ -239,8 +239,14 @@ function isAdminModeEnabled() {
     return localStorage.getItem(ADMIN_MODE_KEY) === 'true';
 }
 
+function syncAdminModeClass() {
+    if (!document || !document.body) return;
+    document.body.classList.toggle('admin-mode', isAdminModeEnabled());
+}
+
 function setAdminModeEnabled(enabled) {
     localStorage.setItem(ADMIN_MODE_KEY, enabled ? 'true' : 'false');
+    syncAdminModeClass();
 }
 
 function getHiddenProductIds() {
@@ -1179,6 +1185,7 @@ function initializeApp() {
     loadLanguage();
     updateCartCount();
     updateWishlistCount();
+    syncAdminModeClass();
     setupEventListeners();
     showWelcomePopup();
     syncStateFromCloud();
