@@ -243,20 +243,25 @@ function setAdminModeEnabled(enabled) {
 }
 
 function setupHiddenAdminAccess() {
-    const logo = document.querySelector('.navbar-logo');
-    if (!logo) return;
+    if (document.getElementById('hiddenAdminTrigger')) return;
 
-    let taps = 0;
-    let timer = null;
-    logo.addEventListener('click', () => {
-        taps += 1;
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => {
-            taps = 0;
-        }, 1800);
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.id = 'hiddenAdminTrigger';
+    trigger.setAttribute('aria-label', 'Admin access');
+    trigger.style.position = 'fixed';
+    trigger.style.top = '8px';
+    trigger.style.left = '8px';
+    trigger.style.width = '22px';
+    trigger.style.height = '22px';
+    trigger.style.opacity = '0';
+    trigger.style.border = '0';
+    trigger.style.background = 'transparent';
+    trigger.style.zIndex = '6000';
+    trigger.style.cursor = 'default';
+    trigger.style.padding = '0';
 
-        if (taps < 5) return;
-        taps = 0;
+    trigger.addEventListener('click', () => {
         const input = prompt('Admin access code:');
         if (input === null) return;
         const value = String(input).trim();
@@ -271,6 +276,8 @@ function setupHiddenAdminAccess() {
             showToast('Invalid admin code.', 'error');
         }
     });
+
+    document.body.appendChild(trigger);
 }
 
 function safeJSONParse(raw, fallback) {
