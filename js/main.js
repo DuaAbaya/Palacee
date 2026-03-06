@@ -224,11 +224,13 @@ const TRACKING_CONFIG = {
 const CLOUD_SYNC_CONFIG = {
     enabled: true,
     firebaseApiKey: 'AIzaSyDUTAF4M9IKSV0imxzEeN-6j_ttJ2KX7vE',
+    firebaseProjectId: 'duaabaya',
     firebaseDatabaseUrl: 'https://duaabaya-default-rtdb.firebaseio.com'
 };
 
 const CLOUD_SESSION_KEY = 'cloudAuthSession';
 let cloudSession = safeJSONParse(localStorage.getItem(CLOUD_SESSION_KEY), null);
+let cloudSyncTemporarilyDisabled = false;
 
 function safeJSONParse(raw, fallback) {
     if (!raw) return fallback;
@@ -245,10 +247,38 @@ function normalizeEmail(email) {
 
 function isCloudSyncEnabled() {
     return Boolean(
+        !cloudSyncTemporarilyDisabled &&
         CLOUD_SYNC_CONFIG.enabled &&
-        CLOUD_SYNC_CONFIG.firebaseApiKey &&
-        CLOUD_SYNC_CONFIG.firebaseDatabaseUrl
+        CLOUD_SYNC_CONFIG.firebaseApiKey
     );
+}
+
+function disableCloudSyncForSession(reason) {
+    cloudSyncTemporarilyDisabled = true;
+    console.warn('Cloud sync disabled for this session:', reason);
+}
+
+function mapCloudAuthError(message) {
+    const code = String(message || '').trim();
+    if (code === 'CONFIGURATION_NOT_FOUND') {
+        return 'Firebase Authentication setup incomplete. Using local account mode for now.';
+    }
+    if (code === 'OPERATION_NOT_ALLOWED') {
+        return 'Email/Password login is disabled in Firebase Auth. Using local account mode for now.';
+    }
+    if (code === 'INVALID_LOGIN_CREDENTIALS') {
+        return 'Invalid email or password.';
+    }
+    if (code === 'EMAIL_EXISTS') {
+        return 'Email already registered. Please login.';
+    }
+    if (code === 'EMAIL_NOT_FOUND') {
+        return 'Account not found. Please register first.';
+    }
+    if (code === 'INVALID_PASSWORD') {
+        return 'Invalid email or password.';
+    }
+    return code || 'Cloud authentication failed.';
 }
 
 function setCloudSession(session) {
@@ -277,7 +307,11 @@ async function firebaseAuthRequest(endpoint, payload) {
 }
 
 function getDatabaseBaseUrl() {
-    return String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
+    const explicit = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
+    if (explicit) return explicit;
+    const projectId = String(CLOUD_SYNC_CONFIG.firebaseProjectId || '').trim();
+    if (!projectId) return '';
+    return `https://${projectId}-default-rtdb.firebaseio.com`;
 }
 
 async function firebaseDbRequest(path, method = 'GET', body = null) {
@@ -528,7 +562,13 @@ async function registerAccount(payload) {
             }
             return { ok: true, user };
         } catch (error) {
-            return { ok: false, message: error.message || 'Cloud registration failed.' };
+            const friendly = mapCloudAuthError(error.message || '');
+            if (String(error.message || '').trim() === 'CONFIGURATION_NOT_FOUND' || String(error.message || '').trim() === 'OPERATION_NOT_ALLOWED') {
+                disableCloudSyncForSession(error.message || 'cloud auth config missing');
+                // Continue using local fallback registration below.
+            } else {
+                return { ok: false, message: friendly };
+            }
         }
     }
 
@@ -606,7 +646,13 @@ async function loginAccount(email, password) {
             updateWishlistCount();
             return { ok: true, user: currentUser };
         } catch (error) {
-            return { ok: false, message: error.message || 'Cloud login failed.' };
+            const friendly = mapCloudAuthError(error.message || '');
+            if (String(error.message || '').trim() === 'CONFIGURATION_NOT_FOUND' || String(error.message || '').trim() === 'OPERATION_NOT_ALLOWED') {
+                disableCloudSyncForSession(error.message || 'cloud auth config missing');
+                // Continue using local fallback login below.
+            } else {
+                return { ok: false, message: friendly };
+            }
         }
     }
 
