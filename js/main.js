@@ -1090,9 +1090,41 @@ function setupProductTabs() {
 // ============================================
 function setupFilters() {
     const filterBtns = document.querySelectorAll('.filter-option input');
+    const filterPanel = document.querySelector('.shop-filters');
+    const filterToggleBtn = document.querySelector('.shop-filter-toggle');
+    const filterCloseBtn = document.querySelector('.shop-filter-close');
+    const filterOverlay = document.querySelector('.shop-filter-overlay');
+    const applyBtn = filterPanel?.querySelector('.btn.btn-primary');
     
     filterBtns.forEach(btn => {
         btn.addEventListener('change', applyFilters);
+    });
+
+    if (!filterPanel || !filterToggleBtn || !filterOverlay) return;
+
+    const closeFiltersPanel = () => {
+        filterPanel.classList.remove('is-open');
+        filterOverlay.classList.remove('active');
+        document.body.classList.remove('filters-open');
+        filterToggleBtn.setAttribute('aria-expanded', 'false');
+    };
+
+    const openFiltersPanel = () => {
+        filterPanel.classList.add('is-open');
+        filterOverlay.classList.add('active');
+        document.body.classList.add('filters-open');
+        filterToggleBtn.setAttribute('aria-expanded', 'true');
+    };
+
+    filterToggleBtn.addEventListener('click', openFiltersPanel);
+    filterCloseBtn?.addEventListener('click', closeFiltersPanel);
+    filterOverlay.addEventListener('click', closeFiltersPanel);
+    applyBtn?.addEventListener('click', () => {
+        if (window.innerWidth <= 992) closeFiltersPanel();
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 992) closeFiltersPanel();
     });
 }
 

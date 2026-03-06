@@ -2025,6 +2025,13 @@ p {
     display: grid;
     grid-template-columns: 280px 1fr;
     gap: 40px;
+    position: relative;
+}
+
+.shop-filter-toggle,
+.shop-filter-close,
+.shop-filter-overlay {
+    display: none;
 }
 
 /* Filters Sidebar */
@@ -2809,8 +2816,86 @@ p {
     }
 
     .shop-filters {
-        position: static;
-        margin-bottom: 24px;
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(86vw, 340px);
+        height: 100vh;
+        overflow-y: auto;
+        margin-bottom: 0;
+        border-radius: 0;
+        z-index: 1200;
+        transform: translateX(105%);
+        transition: transform 0.28s ease;
+    }
+
+    .shop-filters.is-open {
+        transform: translateX(0);
+    }
+
+    .shop-filter-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        position: fixed;
+        top: 88px;
+        right: 16px;
+        z-index: 1100;
+        border: none;
+        border-radius: 999px;
+        background: var(--primary-black);
+        color: var(--white);
+        padding: 10px 16px;
+        font-size: 0.86rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        cursor: pointer;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    }
+
+    [data-theme="dark"] .shop-filter-toggle {
+        background: var(--gold);
+        color: var(--primary-black);
+    }
+
+    .shop-filter-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: var(--gray-light);
+        color: var(--primary-black);
+        margin-left: auto;
+        margin-bottom: 16px;
+        cursor: pointer;
+    }
+
+    [data-theme="dark"] .shop-filter-close {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--white);
+    }
+
+    .shop-filter-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+        z-index: 1150;
+    }
+
+    .shop-filter-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    body.filters-open {
+        overflow: hidden;
     }
 
     .shop-products-header {
@@ -2954,7 +3039,10 @@ p {
     .contact-form,
     .account-form-container,
     .checkout-summary,
-    .cart-summary,
+    .cart-summary {
+        padding: 20px;
+    }
+
     .shop-filters {
         padding: 20px;
     }

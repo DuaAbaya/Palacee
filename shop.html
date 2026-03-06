@@ -76,8 +76,17 @@
             </div>
             
             <div class="shop-layout">
+                <button class="shop-filter-toggle" type="button" aria-controls="shopFilters" aria-expanded="false">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Filters</span>
+                </button>
+                <div class="shop-filter-overlay" aria-hidden="true"></div>
+
                 <!-- Filters Sidebar -->
-                <aside class="shop-filters">
+                <aside class="shop-filters" id="shopFilters">
+                    <button class="shop-filter-close" type="button" aria-label="Close filters">
+                        <i class="fas fa-times"></i>
+                    </button>
                     <div class="filter-section">
                         <h4>Categories</h4>
                         <div class="filter-options">
