@@ -306,12 +306,18 @@ async function firebaseAuthRequest(endpoint, payload) {
     return data;
 }
 
-function getDatabaseBaseUrl() {
+function getDatabaseBaseUrls() {
+    const candidates = [];
     const explicit = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
-    if (explicit) return explicit;
+    if (explicit) {
+        candidates.push(explicit);
+    }
     const projectId = String(CLOUD_SYNC_CONFIG.firebaseProjectId || '').trim();
-    if (!projectId) return '';
-    return `https://${projectId}-default-rtdb.firebaseio.com`;
+    if (projectId) {
+        candidates.push(`https://${projectId}-default-rtdb.firebaseio.com`);
+        candidates.push(`https://${projectId}-default-rtdb.firebasedatabase.app`);
+    }
+    return [...new Set(candidates)];
 }
 
 async function firebaseDbRequest(path, method = 'GET', body = null) {
@@ -322,19 +328,34 @@ async function firebaseDbRequest(path, method = 'GET', body = null) {
         throw new Error('Cloud session missing.');
     }
 
-    const url = `${getDatabaseBaseUrl()}${path}.json?auth=${encodeURIComponent(cloudSession.idToken)}`;
-    const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: body === null ? null : JSON.stringify(body)
-    });
-
-    const text = await response.text();
-    const data = text ? safeJSONParse(text, null) : null;
-    if (!response.ok) {
-        throw new Error(data?.error || 'Cloud data request failed.');
+    const baseUrls = getDatabaseBaseUrls();
+    if (!baseUrls.length) {
+        throw new Error('Realtime Database URL missing.');
     }
-    return data;
+
+    let lastError = null;
+    for (const baseUrl of baseUrls) {
+        try {
+            const url = `${baseUrl}${path}.json?auth=${encodeURIComponent(cloudSession.idToken)}`;
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: body === null ? null : JSON.stringify(body)
+            });
+
+            const text = await response.text();
+            const data = text ? safeJSONParse(text, null) : null;
+            if (!response.ok) {
+                const errorMessage = data?.error || `Cloud data request failed (${response.status}).`;
+                lastError = new Error(errorMessage);
+                continue;
+            }
+            return data;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    throw lastError || new Error('Cloud data request failed.');
 }
 
 async function loadCloudUserSnapshot() {
