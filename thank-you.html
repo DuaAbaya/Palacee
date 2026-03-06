@@ -106,7 +106,9 @@
         function renderThankYouOrder() {
             const metaEl = document.getElementById('thankYouMeta');
             const itemsEl = document.getElementById('thankYouItems');
-            const lastOrder = JSON.parse(localStorage.getItem('lastOrder') || 'null');
+            const user = getCurrentUser ? getCurrentUser() : null;
+            const scopedKey = user ? `lastOrder_${user.id}` : 'guest_lastOrder';
+            const lastOrder = JSON.parse(localStorage.getItem(scopedKey) || localStorage.getItem('lastOrder') || 'null');
 
             if (!lastOrder) {
                 metaEl.innerHTML = '<p>No recent order found.</p>';

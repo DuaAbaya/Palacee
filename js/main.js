@@ -181,8 +181,15 @@ const translations = {
 // ============================================
 // APP STATE
 // ============================================
-let cart = JSON.parse(localStorage.getItem('cart')) || [];
-let wishlist = JSON.parse(localStorage.getItem('wishlist')) || [];
+const AUTH_USERS_KEY = 'authUsers';
+const AUTH_SESSION_KEY = 'authSessionUserId';
+const LEGACY_LOGIN_FLAG_KEY = 'isLoggedIn';
+const LEGACY_CART_KEY = 'cart';
+const LEGACY_WISHLIST_KEY = 'wishlist';
+
+let cart = [];
+let wishlist = [];
+let currentUser = null;
 let currentLanguage = localStorage.getItem('language') || 'en';
 const storedCurrency = localStorage.getItem('currency');
 let currentCurrency = storedCurrency && storedCurrency !== 'USD' ? storedCurrency : 'INR';
@@ -213,6 +220,453 @@ const TRACKING_CONFIG = {
     orderWebhookUrl: "https://formsubmit.co/ajax/tanveerkhan.ltp786786@gmail.com",
     adminEmail: "tanveerkhan.ltp786786@gmail.com"
 };
+
+const CLOUD_SYNC_CONFIG = {
+    enabled: true,
+    firebaseApiKey: 'AIzaSyDUTAF4M9IKSV0imxzEeN-6j_ttJ2KX7vE',
+    firebaseDatabaseUrl: 'https://duaabaya-default-rtdb.firebaseio.com'
+};
+
+const CLOUD_SESSION_KEY = 'cloudAuthSession';
+let cloudSession = safeJSONParse(localStorage.getItem(CLOUD_SESSION_KEY), null);
+
+function safeJSONParse(raw, fallback) {
+    if (!raw) return fallback;
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        return fallback;
+    }
+}
+
+function normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
+}
+
+function isCloudSyncEnabled() {
+    return Boolean(
+        CLOUD_SYNC_CONFIG.enabled &&
+        CLOUD_SYNC_CONFIG.firebaseApiKey &&
+        CLOUD_SYNC_CONFIG.firebaseDatabaseUrl
+    );
+}
+
+function setCloudSession(session) {
+    cloudSession = session || null;
+    if (cloudSession) {
+        localStorage.setItem(CLOUD_SESSION_KEY, JSON.stringify(cloudSession));
+    } else {
+        localStorage.removeItem(CLOUD_SESSION_KEY);
+    }
+}
+
+async function firebaseAuthRequest(endpoint, payload) {
+    if (!isCloudSyncEnabled()) {
+        throw new Error('Cloud sync not configured.');
+    }
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/${endpoint}?key=${CLOUD_SYNC_CONFIG.firebaseApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data?.error?.message || 'Cloud auth failed.');
+    }
+    return data;
+}
+
+function getDatabaseBaseUrl() {
+    return String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
+}
+
+async function firebaseDbRequest(path, method = 'GET', body = null) {
+    if (!isCloudSyncEnabled()) {
+        throw new Error('Cloud sync not configured.');
+    }
+    if (!cloudSession?.idToken) {
+        throw new Error('Cloud session missing.');
+    }
+
+    const url = `${getDatabaseBaseUrl()}${path}.json?auth=${encodeURIComponent(cloudSession.idToken)}`;
+    const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body === null ? null : JSON.stringify(body)
+    });
+
+    const text = await response.text();
+    const data = text ? safeJSONParse(text, null) : null;
+    if (!response.ok) {
+        throw new Error(data?.error || 'Cloud data request failed.');
+    }
+    return data;
+}
+
+async function loadCloudUserSnapshot() {
+    if (!isCloudSyncEnabled() || !cloudSession?.localId) return null;
+    return firebaseDbRequest(`/users/${cloudSession.localId}`, 'GET');
+}
+
+async function saveCloudUserField(field, value) {
+    if (!isCloudSyncEnabled() || !cloudSession?.localId) return;
+    await firebaseDbRequest(`/users/${cloudSession.localId}/${field}`, 'PUT', value);
+}
+
+async function syncStateFromCloud() {
+    if (!isCloudSyncEnabled() || !cloudSession?.localId) return;
+    try {
+        const snapshot = await loadCloudUserSnapshot();
+        if (!snapshot) return;
+
+        if (snapshot.profile && currentUser && String(currentUser.id) === String(cloudSession.localId)) {
+            currentUser = {
+                ...currentUser,
+                ...snapshot.profile,
+                id: cloudSession.localId,
+                email: normalizeEmail(snapshot.profile.email || currentUser.email)
+            };
+        }
+
+        if (Array.isArray(snapshot.cart)) {
+            cart = snapshot.cart;
+            saveScopedList('cart', cart);
+        }
+        if (Array.isArray(snapshot.wishlist)) {
+            wishlist = snapshot.wishlist;
+            saveScopedList('wishlist', wishlist);
+        }
+        if (Array.isArray(snapshot.orders)) {
+            localStorage.setItem(getScopedKey('orders'), JSON.stringify(snapshot.orders));
+        }
+        if (snapshot.lastOrder) {
+            localStorage.setItem(getScopedKey('lastOrder'), JSON.stringify(snapshot.lastOrder));
+            localStorage.setItem('lastOrder', JSON.stringify(snapshot.lastOrder));
+        }
+
+        updateCartCount();
+        updateWishlistCount();
+        if (typeof renderCart === 'function') renderCart();
+        if (typeof renderWishlist === 'function') renderWishlist();
+    } catch (error) {
+        console.warn('Cloud sync load failed:', error.message || error);
+    }
+}
+
+function getUsers() {
+    const users = safeJSONParse(localStorage.getItem(AUTH_USERS_KEY), []);
+    return Array.isArray(users) ? users : [];
+}
+
+function saveUsers(users) {
+    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
+}
+
+function getCurrentUserId() {
+    return localStorage.getItem(AUTH_SESSION_KEY) || '';
+}
+
+function isUserLoggedIn() {
+    return !!currentUser;
+}
+
+function setCurrentUserById(userId) {
+    const nextId = String(userId || '').trim();
+    if (!nextId) {
+        currentUser = null;
+        localStorage.removeItem(AUTH_SESSION_KEY);
+        localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'false');
+        return;
+    }
+
+    if (isCloudSyncEnabled() && cloudSession && String(cloudSession.localId) === nextId) {
+        currentUser = currentUser && String(currentUser.id) === nextId ? currentUser : {
+            id: nextId,
+            firstName: '',
+            lastName: '',
+            email: normalizeEmail(cloudSession.email || ''),
+            phone: ''
+        };
+        localStorage.setItem(AUTH_SESSION_KEY, nextId);
+        localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
+        return;
+    }
+
+    const users = getUsers();
+    const user = users.find(item => String(item.id) === nextId) || null;
+    currentUser = user;
+    if (user) {
+        localStorage.setItem(AUTH_SESSION_KEY, String(user.id));
+        localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
+    } else {
+        localStorage.removeItem(AUTH_SESSION_KEY);
+        localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'false');
+    }
+}
+
+function getScopedKey(baseKey, userId = getCurrentUserId()) {
+    const id = String(userId || '').trim();
+    return id ? `${baseKey}_${id}` : `guest_${baseKey}`;
+}
+
+function loadScopedList(baseKey) {
+    return safeJSONParse(localStorage.getItem(getScopedKey(baseKey)), []);
+}
+
+function saveScopedList(baseKey, value) {
+    localStorage.setItem(getScopedKey(baseKey), JSON.stringify(Array.isArray(value) ? value : []));
+}
+
+function migrateLegacyGuestData() {
+    if (!localStorage.getItem('guest_cart')) {
+        const legacyCart = safeJSONParse(localStorage.getItem(LEGACY_CART_KEY), []);
+        if (Array.isArray(legacyCart) && legacyCart.length) {
+            localStorage.setItem('guest_cart', JSON.stringify(legacyCart));
+        }
+    }
+
+    if (!localStorage.getItem('guest_wishlist')) {
+        const legacyWishlist = safeJSONParse(localStorage.getItem(LEGACY_WISHLIST_KEY), []);
+        if (Array.isArray(legacyWishlist) && legacyWishlist.length) {
+            localStorage.setItem('guest_wishlist', JSON.stringify(legacyWishlist));
+        }
+    }
+}
+
+function hydrateUserState() {
+    setCurrentUserById(getCurrentUserId());
+    cart = loadScopedList('cart');
+    wishlist = loadScopedList('wishlist');
+}
+
+function mergeGuestDataIntoUser() {
+    if (!isUserLoggedIn()) return;
+
+    const guestCart = safeJSONParse(localStorage.getItem('guest_cart'), []);
+    const guestWishlist = safeJSONParse(localStorage.getItem('guest_wishlist'), []);
+
+    if (Array.isArray(guestCart) && guestCart.length) {
+        const currentCart = loadScopedList('cart');
+        const mergedCart = [...currentCart, ...guestCart].map((item, index) => ({
+            ...item,
+            cartId: item.cartId || Date.now() + index
+        }));
+        localStorage.setItem(getScopedKey('cart'), JSON.stringify(mergedCart));
+        localStorage.removeItem('guest_cart');
+    }
+
+    if (Array.isArray(guestWishlist) && guestWishlist.length) {
+        const currentWishlist = loadScopedList('wishlist');
+        const seen = new Set(currentWishlist.map(item => Number(item.id)));
+        const mergedWishlist = [...currentWishlist];
+        guestWishlist.forEach(item => {
+            const productId = Number(item.id);
+            if (!seen.has(productId)) {
+                seen.add(productId);
+                mergedWishlist.push(item);
+            }
+        });
+        localStorage.setItem(getScopedKey('wishlist'), JSON.stringify(mergedWishlist));
+        localStorage.removeItem('guest_wishlist');
+    }
+}
+
+function getUserOrders(userId = getCurrentUserId()) {
+    return safeJSONParse(localStorage.getItem(getScopedKey('orders', userId)), []);
+}
+
+function saveOrderForUser(order, userId = getCurrentUserId()) {
+    const existing = getUserOrders(userId);
+    existing.unshift(order);
+    localStorage.setItem(getScopedKey('orders', userId), JSON.stringify(existing));
+    if (isCloudSyncEnabled() && currentUser && String(currentUser.id) === String(userId)) {
+        saveCloudUserField('orders', existing).catch(error => {
+            console.warn('Cloud orders sync failed:', error.message || error);
+        });
+    }
+}
+
+async function registerAccount(payload) {
+    if (isCloudSyncEnabled()) {
+        try {
+            const email = normalizeEmail(payload.email);
+            if (!email) return { ok: false, message: 'Email is required.' };
+
+            const auth = await firebaseAuthRequest('accounts:signUp', {
+                email,
+                password: String(payload.password || ''),
+                returnSecureToken: true
+            });
+
+            const user = {
+                id: auth.localId,
+                firstName: String(payload.firstName || '').trim(),
+                lastName: String(payload.lastName || '').trim(),
+                email,
+                phone: String(payload.phone || '').trim(),
+                createdAt: new Date().toISOString()
+            };
+
+            setCloudSession({
+                localId: auth.localId,
+                idToken: auth.idToken,
+                refreshToken: auth.refreshToken,
+                email
+            });
+
+            currentUser = user;
+            localStorage.setItem(AUTH_SESSION_KEY, user.id);
+            localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
+            mergeGuestDataIntoUser();
+            hydrateUserState();
+
+            await saveCloudUserField('profile', user);
+            await saveCloudUserField('cart', cart);
+            await saveCloudUserField('wishlist', wishlist);
+            if (!localStorage.getItem(getScopedKey('orders'))) {
+                await saveCloudUserField('orders', []);
+            }
+            return { ok: true, user };
+        } catch (error) {
+            return { ok: false, message: error.message || 'Cloud registration failed.' };
+        }
+    }
+
+    const users = getUsers();
+    const email = normalizeEmail(payload.email);
+    if (!email) return { ok: false, message: 'Email is required.' };
+    if (users.some(user => normalizeEmail(user.email) === email)) {
+        return { ok: false, message: 'Email already registered. Please login.' };
+    }
+
+    const user = {
+        id: `u_${Date.now()}`,
+        firstName: String(payload.firstName || '').trim(),
+        lastName: String(payload.lastName || '').trim(),
+        email,
+        phone: String(payload.phone || '').trim(),
+        password: String(payload.password || ''),
+        createdAt: new Date().toISOString()
+    };
+    users.push(user);
+    saveUsers(users);
+    setCurrentUserById(user.id);
+    mergeGuestDataIntoUser();
+    hydrateUserState();
+    return { ok: true, user };
+}
+
+async function loginAccount(email, password) {
+    if (isCloudSyncEnabled()) {
+        try {
+            const auth = await firebaseAuthRequest('accounts:signInWithPassword', {
+                email: normalizeEmail(email),
+                password: String(password || ''),
+                returnSecureToken: true
+            });
+
+            setCloudSession({
+                localId: auth.localId,
+                idToken: auth.idToken,
+                refreshToken: auth.refreshToken,
+                email: normalizeEmail(email)
+            });
+
+            const snapshot = await loadCloudUserSnapshot();
+            const profile = snapshot?.profile || {};
+            currentUser = {
+                id: auth.localId,
+                firstName: String(profile.firstName || '').trim(),
+                lastName: String(profile.lastName || '').trim(),
+                email: normalizeEmail(profile.email || email),
+                phone: String(profile.phone || '').trim(),
+                createdAt: profile.createdAt || new Date().toISOString()
+            };
+
+            localStorage.setItem(AUTH_SESSION_KEY, currentUser.id);
+            localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
+
+            cart = Array.isArray(snapshot?.cart) ? snapshot.cart : [];
+            wishlist = Array.isArray(snapshot?.wishlist) ? snapshot.wishlist : [];
+            saveScopedList('cart', cart);
+            saveScopedList('wishlist', wishlist);
+            localStorage.setItem(LEGACY_CART_KEY, JSON.stringify(cart));
+            localStorage.setItem(LEGACY_WISHLIST_KEY, JSON.stringify(wishlist));
+            if (Array.isArray(snapshot?.orders)) {
+                localStorage.setItem(getScopedKey('orders'), JSON.stringify(snapshot.orders));
+            }
+
+            mergeGuestDataIntoUser();
+            cart = loadScopedList('cart');
+            wishlist = loadScopedList('wishlist');
+            await saveCloudUserField('cart', cart);
+            await saveCloudUserField('wishlist', wishlist);
+
+            updateCartCount();
+            updateWishlistCount();
+            return { ok: true, user: currentUser };
+        } catch (error) {
+            return { ok: false, message: error.message || 'Cloud login failed.' };
+        }
+    }
+
+    const users = getUsers();
+    const normalizedEmail = normalizeEmail(email);
+    const user = users.find(item =>
+        normalizeEmail(item.email) === normalizedEmail && String(item.password) === String(password || '')
+    );
+    if (!user) return { ok: false, message: 'Invalid email or password.' };
+    setCurrentUserById(user.id);
+    mergeGuestDataIntoUser();
+    hydrateUserState();
+    return { ok: true, user };
+}
+
+function logoutAccount() {
+    setCloudSession(null);
+    setCurrentUserById('');
+    hydrateUserState();
+}
+
+async function updateCurrentUserProfile(patch = {}) {
+    if (!isUserLoggedIn()) return { ok: false, message: 'Please login first.' };
+
+    if (isCloudSyncEnabled() && cloudSession?.localId) {
+        try {
+            const nextUser = {
+                ...currentUser,
+                firstName: String(patch.firstName ?? currentUser.firstName).trim(),
+                lastName: String(patch.lastName ?? currentUser.lastName).trim(),
+                phone: String(patch.phone ?? currentUser.phone).trim(),
+                email: normalizeEmail(patch.email || currentUser.email)
+            };
+            currentUser = nextUser;
+            await saveCloudUserField('profile', nextUser);
+            return { ok: true, user: currentUser };
+        } catch (error) {
+            return { ok: false, message: error.message || 'Profile update failed.' };
+        }
+    }
+
+    const users = getUsers();
+    const index = users.findIndex(user => String(user.id) === String(currentUser.id));
+    if (index === -1) return { ok: false, message: 'User not found.' };
+
+    const nextEmail = normalizeEmail(patch.email || currentUser.email);
+    const emailTaken = users.some((user, i) => i !== index && normalizeEmail(user.email) === nextEmail);
+    if (emailTaken) return { ok: false, message: 'Email already used by another account.' };
+
+    users[index] = {
+        ...users[index],
+        firstName: String(patch.firstName ?? users[index].firstName).trim(),
+        lastName: String(patch.lastName ?? users[index].lastName).trim(),
+        phone: String(patch.phone ?? users[index].phone).trim(),
+        email: nextEmail
+    };
+    saveUsers(users);
+    setCurrentUserById(users[index].id);
+    return { ok: true, user: currentUser };
+}
 
 // ============================================
 // INITIALIZATION
@@ -305,6 +759,8 @@ function removeAdminProduct(productId) {
 }
 function initializeApp() {
     loadCustomProducts();
+    migrateLegacyGuestData();
+    hydrateUserState();
     initializeTrackingScripts();
     loadTheme();
     loadLanguage();
@@ -312,6 +768,7 @@ function initializeApp() {
     updateWishlistCount();
     setupEventListeners();
     showWelcomePopup();
+    syncStateFromCloud();
 }
 
 // ============================================
@@ -446,7 +903,14 @@ function updateCartQuantity(cartId, change) {
 }
 
 function saveCart() {
-    localStorage.setItem('cart', JSON.stringify(cart));
+    saveScopedList('cart', cart);
+    // Legacy fallback for pages still reading this key directly.
+    localStorage.setItem(LEGACY_CART_KEY, JSON.stringify(cart));
+    if (isCloudSyncEnabled() && isUserLoggedIn()) {
+        saveCloudUserField('cart', cart).catch(error => {
+            console.warn('Cloud cart sync failed:', error.message || error);
+        });
+    }
 }
 
 function updateCartCount() {
@@ -542,11 +1006,15 @@ function createCheckoutOrder(formElement) {
         totalUSD: Number(subtotalUSD.toFixed(2)),
         itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
         paymentMethod: selectedPayment ? selectedPayment.value : 'card',
+        account: currentUser ? {
+            id: currentUser.id,
+            email: currentUser.email
+        } : null,
         customer: {
-            firstName: getCheckoutFormValue(formElement, '[name="firstName"]') || getCheckoutFormValue(formElement, 'input[placeholder="Enter first name"]'),
-            lastName: getCheckoutFormValue(formElement, '[name="lastName"]') || getCheckoutFormValue(formElement, 'input[placeholder="Enter last name"]'),
-            email: getCheckoutFormValue(formElement, '[name="email"]') || getCheckoutFormValue(formElement, 'input[type="email"]'),
-            phone: getCheckoutFormValue(formElement, '[name="phone"]') || getCheckoutFormValue(formElement, 'input[type="tel"]'),
+            firstName: getCheckoutFormValue(formElement, '[name="firstName"]') || currentUser?.firstName || getCheckoutFormValue(formElement, 'input[placeholder="Enter first name"]'),
+            lastName: getCheckoutFormValue(formElement, '[name="lastName"]') || currentUser?.lastName || getCheckoutFormValue(formElement, 'input[placeholder="Enter last name"]'),
+            email: getCheckoutFormValue(formElement, '[name="email"]') || currentUser?.email || getCheckoutFormValue(formElement, 'input[type="email"]'),
+            phone: getCheckoutFormValue(formElement, '[name="phone"]') || currentUser?.phone || getCheckoutFormValue(formElement, 'input[type="tel"]'),
             street: getCheckoutFormValue(formElement, '[name="street"]') || getCheckoutFormValue(formElement, 'input[placeholder="Enter street address"]'),
             apartment: getCheckoutFormValue(formElement, '[name="apartment"]') || getCheckoutFormValue(formElement, 'input[placeholder="Enter apartment details"]'),
             city: getCheckoutFormValue(formElement, '[name="city"]') || getCheckoutFormValue(formElement, 'input[placeholder="Enter city"]'),
@@ -729,7 +1197,17 @@ function createFormSubmitPayload(order) {
 }
 
 function saveRecentOrder(order) {
+    localStorage.setItem(getScopedKey('lastOrder'), JSON.stringify(order));
     localStorage.setItem('lastOrder', JSON.stringify(order));
+    if (isCloudSyncEnabled() && isUserLoggedIn()) {
+        saveCloudUserField('lastOrder', order).catch(error => {
+            console.warn('Cloud last-order sync failed:', error.message || error);
+        });
+    }
+}
+
+function saveOrderHistory(order) {
+    saveOrderForUser(order);
 }
 
 // ============================================
@@ -758,7 +1236,14 @@ function removeFromWishlist(productId) {
 }
 
 function saveWishlist() {
-    localStorage.setItem('wishlist', JSON.stringify(wishlist));
+    saveScopedList('wishlist', wishlist);
+    // Legacy fallback for pages still reading this key directly.
+    localStorage.setItem(LEGACY_WISHLIST_KEY, JSON.stringify(wishlist));
+    if (isCloudSyncEnabled() && isUserLoggedIn()) {
+        saveCloudUserField('wishlist', wishlist).catch(error => {
+            console.warn('Cloud wishlist sync failed:', error.message || error);
+        });
+    }
 }
 
 function updateWishlistCount() {
@@ -1349,6 +1834,14 @@ window.products = products;
 window.getAdminProducts = getStoredCustomProducts;
 window.addAdminProduct = addAdminProduct;
 window.removeAdminProduct = removeAdminProduct;
+window.registerAccount = registerAccount;
+window.loginAccount = loginAccount;
+window.logoutAccount = logoutAccount;
+window.isUserLoggedIn = isUserLoggedIn;
+window.getCurrentUser = () => currentUser;
+window.getUserOrders = getUserOrders;
+window.updateCurrentUserProfile = updateCurrentUserProfile;
+window.saveOrderHistory = saveOrderHistory;
 
 
 

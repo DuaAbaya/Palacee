@@ -46,11 +46,11 @@
                 <form class="account-form" onsubmit="handleLogin(event)">
                     <div class="form-group">
                         <label>Email Address</label>
-                        <input type="email" placeholder="Enter your email" required>
+                        <input type="email" id="loginEmail" name="email" placeholder="Enter your email" required autocomplete="email">
                     </div>
                     <div class="form-group">
                         <label>Password</label>
-                        <input type="password" placeholder="Enter your password" required>
+                        <input type="password" id="loginPassword" name="password" placeholder="Enter your password" required autocomplete="current-password">
                     </div>
                     <div class="form-group" style="display: flex; justify-content: space-between; align-items: center;">
                         <label style="display: flex; align-items: center; gap: 8px;">
@@ -76,28 +76,28 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>First Name</label>
-                            <input type="text" placeholder="First name" required>
+                            <input type="text" id="registerFirstName" name="firstName" placeholder="First name" required autocomplete="given-name">
                         </div>
                         <div class="form-group">
                             <label>Last Name</label>
-                            <input type="text" placeholder="Last name" required>
+                            <input type="text" id="registerLastName" name="lastName" placeholder="Last name" required autocomplete="family-name">
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Email Address</label>
-                        <input type="email" placeholder="Enter your email" required>
+                        <input type="email" id="registerEmail" name="email" placeholder="Enter your email" required autocomplete="email">
                     </div>
                     <div class="form-group">
                         <label>Phone Number</label>
-                        <input type="tel" placeholder="Enter your phone">
+                        <input type="tel" id="registerPhone" name="phone" placeholder="Enter your phone" autocomplete="tel">
                     </div>
                     <div class="form-group">
                         <label>Password</label>
-                        <input type="password" placeholder="Create a password" required>
+                        <input type="password" id="registerPassword" name="password" placeholder="Create a password" required autocomplete="new-password">
                     </div>
                     <div class="form-group">
                         <label>Confirm Password</label>
-                        <input type="password" placeholder="Confirm your password" required>
+                        <input type="password" id="registerConfirmPassword" name="confirmPassword" placeholder="Confirm your password" required autocomplete="new-password">
                     </div>
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 8px;">
@@ -123,25 +123,25 @@
                             <h3>My Profile</h3>
                             <div class="form-group">
                                 <label>Full Name</label>
-                                <input type="text" value="John Doe">
+                                <input type="text" id="profileFullName" value="">
                             </div>
                             <div class="form-group">
                                 <label>Email</label>
-                                <input type="email" value="john@example.com">
+                                <input type="email" id="profileEmail" value="">
                             </div>
                             <div class="form-group">
                                 <label>Phone</label>
-                                <input type="tel" value="+971 50 123 4567">
+                                <input type="tel" id="profilePhone" value="">
                             </div>
-                            <button class="btn btn-primary">Update Profile</button>
+                            <button class="btn btn-primary" type="button" onclick="updateProfile()">Update Profile</button>
                         </div>
                         
                         <div class="form-section">
                             <h3>My Orders</h3>
-                            <div style="text-align: center; padding: 30px 0;">
-                                <p style="margin-bottom: 15px;">No orders yet</p>
-                                <a href="shop.html" class="btn btn-secondary">Start Shopping</a>
+                            <div id="accountOrdersList" style="padding: 6px 0;">
+                                <p>No orders yet</p>
                             </div>
+                            <a href="shop.html" class="btn btn-secondary">Start Shopping</a>
                         </div>
                         
                         <div class="form-section">
@@ -185,23 +185,20 @@
 
     <script src="js/main.js"></script>
     <script>
-        let isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-        
         document.addEventListener('DOMContentLoaded', () => {
             initializeApp();
             setupAccountTabs();
-            if (isLoggedIn) {
-                showMyAccount();
-            }
-            renderWishlist();
+            syncAccountView();
         });
 
         function setupAccountTabs() {
             document.querySelectorAll('.account-tab').forEach(tab => {
                 tab.addEventListener('click', function() {
+                    if (isUserLoggedIn()) return;
+
                     document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
                     this.classList.add('active');
-                    
+
                     const tabId = this.dataset.tab;
                     document.getElementById('loginForm').style.display = tabId === 'login' ? 'block' : 'none';
                     document.getElementById('registerForm').style.display = tabId === 'register' ? 'block' : 'none';
@@ -210,53 +207,137 @@
             });
         }
 
-        function handleLogin(e) {
+        function getActiveUser() {
+            return window.getCurrentUser ? window.getCurrentUser() : null;
+        }
+
+        function syncAccountView() {
+            const loggedIn = isUserLoggedIn();
+            document.getElementById('loginForm').style.display = loggedIn ? 'none' : 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('myAccount').style.display = loggedIn ? 'block' : 'none';
+
+            document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.account-tab[data-tab="login"]').classList.add('active');
+
+            if (loggedIn) {
+                renderProfile();
+                renderOrders();
+                renderWishlistSection();
+            }
+        }
+
+        async function handleLogin(e) {
             e.preventDefault();
-            isLoggedIn = true;
-            localStorage.setItem('isLoggedIn', 'true');
-            showMyAccount();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const result = await loginAccount(email, password);
+
+            if (!result.ok) {
+                showToast(result.message, 'error');
+                return;
+            }
+
+            e.target.reset();
+            syncAccountView();
             showToast('Welcome back!');
         }
 
-        function handleRegister(e) {
+        async function handleRegister(e) {
             e.preventDefault();
-            isLoggedIn = true;
-            localStorage.setItem('isLoggedIn', 'true');
-            showMyAccount();
+
+            const payload = {
+                firstName: document.getElementById('registerFirstName').value.trim(),
+                lastName: document.getElementById('registerLastName').value.trim(),
+                email: document.getElementById('registerEmail').value.trim(),
+                phone: document.getElementById('registerPhone').value.trim(),
+                password: document.getElementById('registerPassword').value
+            };
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+            if (payload.password.length < 6) {
+                showToast('Password must be at least 6 characters.', 'error');
+                return;
+            }
+            if (payload.password !== confirmPassword) {
+                showToast('Passwords do not match.', 'error');
+                return;
+            }
+
+            const result = await registerAccount(payload);
+            if (!result.ok) {
+                showToast(result.message, 'error');
+                return;
+            }
+
+            e.target.reset();
+            syncAccountView();
             showToast('Account created successfully!');
         }
 
         function handleLogout() {
-            isLoggedIn = false;
-            localStorage.setItem('isLoggedIn', 'false');
-            document.getElementById('myAccount').style.display = 'none';
-            document.getElementById('loginForm').style.display = 'block';
-            document.getElementById('registerForm').style.display = 'none';
-            document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector('.account-tab[data-tab="login"]').classList.add('active');
+            logoutAccount();
+            syncAccountView();
             showToast('Logged out successfully');
         }
 
-        function showMyAccount() {
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('registerForm').style.display = 'none';
-            document.getElementById('myAccount').style.display = 'block';
-            renderWishlist();
+        function renderProfile() {
+            const user = getActiveUser();
+            if (!user) return;
+
+            document.getElementById('profileFullName').value = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+            document.getElementById('profileEmail').value = user.email || '';
+            document.getElementById('profilePhone').value = user.phone || '';
         }
-        
-        // Override renderWishlist to target correct container
-        function renderWishlist() {
-            const container = document.getElementById('wishlistProducts');
-            if (!container) return;
-            
-            if (wishlist.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 30px;"><p>Your wishlist is empty</p><a href="shop.html" class="btn btn-secondary" style="margin-top: 15px;">Shop Now</a></div>';
+
+        async function updateProfile() {
+            const fullName = document.getElementById('profileFullName').value.trim();
+            const [firstName, ...rest] = fullName.split(' ').filter(Boolean);
+            const lastName = rest.join(' ');
+            const email = document.getElementById('profileEmail').value.trim();
+            const phone = document.getElementById('profilePhone').value.trim();
+
+            const result = await updateCurrentUserProfile({
+                firstName: firstName || '',
+                lastName: lastName || '',
+                email,
+                phone
+            });
+
+            if (!result.ok) {
+                showToast(result.message, 'error');
                 return;
             }
-            
-            container.innerHTML = '<div class="products-grid">' + wishlist.map(p => createProductCard(p)).join('') + '</div>';
-            updatePrices();
-            updateWishlistButtons();
+
+            renderProfile();
+            showToast('Profile updated.');
+        }
+
+        function renderOrders() {
+            const container = document.getElementById('accountOrdersList');
+            if (!container) return;
+
+            const orders = getUserOrders();
+            if (!orders.length) {
+                container.innerHTML = '<p style="margin-bottom: 10px;">No orders yet</p>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => `
+                <div style="border: 1px solid var(--gray-light); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px;">
+                    <div><strong>${order.orderId}</strong></div>
+                    <div style="font-size: 0.9rem; color: var(--gray);">${new Date(order.createdAt).toLocaleString()}</div>
+                    <div style="margin-top: 4px;">Total: ${order.displayTotal || formatPrice(order.totalUSD || 0)}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderWishlistSection() {
+            const container = document.getElementById('wishlistProducts');
+            if (!container) return;
+
+            container.classList.add('wishlist-products');
+            renderWishlist();
         }
     </script>
 </body>

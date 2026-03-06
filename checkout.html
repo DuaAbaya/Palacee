@@ -275,10 +275,27 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             initializeApp();
+            prefillCheckoutUser();
             renderCheckoutSummary();
             setupPaymentMethods();
             setupPaymentPopup();
         });
+
+        function prefillCheckoutUser() {
+            if (!isUserLoggedIn()) return;
+            const user = getCurrentUser();
+            if (!user) return;
+
+            const firstNameInput = document.querySelector('[name="firstName"]');
+            const lastNameInput = document.querySelector('[name="lastName"]');
+            const emailInput = document.querySelector('[name="email"]');
+            const phoneInput = document.querySelector('[name="phone"]');
+
+            if (firstNameInput && !firstNameInput.value) firstNameInput.value = user.firstName || '';
+            if (lastNameInput && !lastNameInput.value) lastNameInput.value = user.lastName || '';
+            if (emailInput && !emailInput.value) emailInput.value = user.email || '';
+            if (phoneInput && !phoneInput.value) phoneInput.value = user.phone || '';
+        }
 
         function renderCheckoutSummary() {
             const container = document.getElementById('checkoutProducts');
@@ -456,6 +473,7 @@
                 const order = createCheckoutOrder(form);
                 trackPurchase(order);
                 await notifyOrderWebhook(order, form);
+                saveOrderHistory(order);
                 saveRecentOrder(order);
 
                 showToast('Order placed successfully! Redirecting to confirmation...');
