@@ -1117,8 +1117,11 @@ function setupFilters() {
     };
 
     filterToggleBtn.addEventListener('click', openFiltersPanel);
+    filterToggleBtn.addEventListener('touchstart', openFiltersPanel, { passive: true });
     filterCloseBtn?.addEventListener('click', closeFiltersPanel);
+    filterCloseBtn?.addEventListener('touchstart', closeFiltersPanel, { passive: true });
     filterOverlay.addEventListener('click', closeFiltersPanel);
+    filterOverlay.addEventListener('touchstart', closeFiltersPanel, { passive: true });
     applyBtn?.addEventListener('click', () => {
         if (window.innerWidth <= 992) closeFiltersPanel();
     });

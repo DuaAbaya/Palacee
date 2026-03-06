@@ -2838,9 +2838,9 @@ p {
         align-items: center;
         gap: 8px;
         position: fixed;
-        top: 88px;
+        top: calc(110px + env(safe-area-inset-top, 0px));
         right: 16px;
-        z-index: 1100;
+        z-index: 1301;
         border: none;
         border-radius: 999px;
         background: var(--primary-black);
@@ -2885,6 +2885,7 @@ p {
         background: rgba(0, 0, 0, 0.45);
         opacity: 0;
         visibility: hidden;
+        pointer-events: none;
         transition: opacity 0.25s ease, visibility 0.25s ease;
         z-index: 1150;
     }
@@ -2892,6 +2893,7 @@ p {
     .shop-filter-overlay.active {
         opacity: 1;
         visibility: visible;
+        pointer-events: auto;
     }
 
     body.filters-open {
