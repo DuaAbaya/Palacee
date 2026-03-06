@@ -372,6 +372,37 @@ async function firebaseAuthRequest(endpoint, payload) {
     return data;
 }
 
+async function refreshCloudIdToken() {
+    if (!isCloudSyncEnabled() || !cloudSession?.refreshToken) {
+        throw new Error('Cloud refresh token missing.');
+    }
+
+    const tokenUrl = `https://securetoken.googleapis.com/v1/token?key=${CLOUD_SYNC_CONFIG.firebaseApiKey}`;
+    let response;
+    try {
+        response = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(cloudSession.refreshToken)}`
+        });
+    } catch (error) {
+        throw new Error('NETWORK_REQUEST_FAILED');
+    }
+
+    const data = await response.json();
+    if (!response.ok || !data?.id_token) {
+        throw new Error(data?.error?.message || 'Token refresh failed.');
+    }
+
+    setCloudSession({
+        ...cloudSession,
+        idToken: data.id_token,
+        refreshToken: data.refresh_token || cloudSession.refreshToken,
+        localId: data.user_id || cloudSession.localId
+    });
+    return cloudSession.idToken;
+}
+
 function getDatabaseBaseUrls() {
     const candidates = [];
     const explicit = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
@@ -400,23 +431,46 @@ async function firebaseDbRequest(path, method = 'GET', body = null) {
     }
 
     let lastError = null;
+    let refreshedOnce = false;
     for (const baseUrl of baseUrls) {
         try {
-            const url = `${baseUrl}${path}.json?auth=${encodeURIComponent(cloudSession.idToken)}`;
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: body === null ? null : JSON.stringify(body)
-            });
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                const url = `${baseUrl}${path}.json?auth=${encodeURIComponent(cloudSession.idToken)}`;
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: body === null ? null : JSON.stringify(body)
+                });
 
-            const text = await response.text();
-            const data = text ? safeJSONParse(text, null) : null;
-            if (!response.ok) {
-                const errorMessage = data?.error || `Cloud data request failed (${response.status}).`;
+                const text = await response.text();
+                const data = text ? safeJSONParse(text, null) : null;
+                if (response.ok) {
+                    return data;
+                }
+
+                const errorMessage = String(data?.error || `Cloud data request failed (${response.status}).`);
+                const shouldTryRefresh = !refreshedOnce && (
+                    response.status === 401 ||
+                    response.status === 403 ||
+                    /permission denied/i.test(errorMessage) ||
+                    /auth/i.test(errorMessage) ||
+                    /token/i.test(errorMessage)
+                );
+
+                if (shouldTryRefresh) {
+                    try {
+                        await refreshCloudIdToken();
+                        refreshedOnce = true;
+                        continue;
+                    } catch (refreshError) {
+                        lastError = new Error('Session expired. Please login again.');
+                        break;
+                    }
+                }
+
                 lastError = new Error(errorMessage);
-                continue;
+                break;
             }
-            return data;
         } catch (error) {
             lastError = error;
         }
