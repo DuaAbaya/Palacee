@@ -188,6 +188,7 @@ const LEGACY_CART_KEY = 'cart';
 const LEGACY_WISHLIST_KEY = 'wishlist';
 const ADMIN_MODE_KEY = 'dapAdminMode';
 const ADMIN_SECRET_CODE = 'DAP-ADMIN-786';
+const HIDDEN_PRODUCTS_KEY = 'hiddenProductIds';
 
 let cart = [];
 let wishlist = [];
@@ -240,6 +241,26 @@ function isAdminModeEnabled() {
 
 function setAdminModeEnabled(enabled) {
     localStorage.setItem(ADMIN_MODE_KEY, enabled ? 'true' : 'false');
+}
+
+function getHiddenProductIds() {
+    const ids = safeJSONParse(localStorage.getItem(HIDDEN_PRODUCTS_KEY), []);
+    return Array.isArray(ids) ? ids.map(id => Number(id)).filter(id => !Number.isNaN(id)) : [];
+}
+
+function saveHiddenProductIds(ids) {
+    const unique = [...new Set((Array.isArray(ids) ? ids : []).map(id => Number(id)).filter(id => !Number.isNaN(id)))];
+    localStorage.setItem(HIDDEN_PRODUCTS_KEY, JSON.stringify(unique));
+}
+
+function isProductHidden(productId) {
+    return getHiddenProductIds().includes(Number(productId));
+}
+
+function hideProductById(productId) {
+    const ids = getHiddenProductIds();
+    ids.push(Number(productId));
+    saveHiddenProductIds(ids);
 }
 
 function setupHiddenAdminAccess() {
@@ -1125,17 +1146,16 @@ function removeProductAsAdmin(productId) {
         return;
     }
 
-    if (!target.isCustom) {
-        showToast('Only admin-added custom products can be removed.', 'error');
-        return;
-    }
-
     if (!confirm('Remove this product?')) return;
 
-    const removed = removeAdminProduct(targetId);
-    if (!removed) {
-        showToast('Unable to remove product.', 'error');
-        return;
+    if (target.isCustom) {
+        const removed = removeAdminProduct(targetId);
+        if (!removed) {
+            showToast('Unable to remove product.', 'error');
+            return;
+        }
+    } else {
+        hideProductById(targetId);
     }
 
     cart = cart.filter(item => Number(item.id) !== targetId);
@@ -2058,11 +2078,12 @@ function setupThemeToggle() {
 function renderProducts(productsToRender = products) {
     const grid = document.querySelector('.products-grid, .shop-products-grid');
     if (!grid) return;
-    
-    grid.innerHTML = productsToRender.map(product => createProductCard(product)).join('');
+
+    const visibleProducts = productsToRender.filter(product => !isProductHidden(product.id));
+    grid.innerHTML = visibleProducts.map(product => createProductCard(product)).join('');
     const results = document.querySelector('.shop-results');
     if (results) {
-        results.textContent = `Showing ${productsToRender.length} products`;
+        results.textContent = `Showing ${visibleProducts.length} products`;
     }
     updateWishlistButtons();
     updatePrices();
@@ -2070,7 +2091,7 @@ function renderProducts(productsToRender = products) {
 
 function createProductCard(product) {
     const isWishlisted = isInWishlist(product.id);
-    const showAdminRemove = isAdminModeEnabled() && product.isCustom;
+    const showAdminRemove = isAdminModeEnabled();
     return `
         <div class="product-card">
             <div class="product-image">
