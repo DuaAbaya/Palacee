@@ -1603,7 +1603,23 @@ function fileToBase64(file) {
 async function uploadToImgBB(base64Data, fileName) {
     // ImgBB free API (no key required for basic uploads)
     const formData = new FormData();
-    formData.append('image', base64Data);
+    
+    // Convert base64 data URL to Blob
+    try {
+        const arr = base64Data.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        formData.append('image', blob, fileName || 'screenshot.jpg');
+    } catch (error) {
+        console.error('Error converting base64 to blob:', error);
+        return null;
+    }
     
     try {
         const response = await fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae7f9089d85875571358', {
