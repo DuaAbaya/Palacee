@@ -1255,6 +1255,8 @@ async function uploadToImgBB(base64Data, fileName) {
 }
 
 async function sendOrderToFormSubmit(order, formElement) {
+    return; // TEMPORARY - skip screenshot to test
+    // rest of code...
     // Handle payment screenshot upload first
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
