@@ -25,150 +25,6 @@ const products = [
         reviews: 32,
         fabric: "Premium Nidha",
         badge: "new"
-    },
-    {
-        id: 2,
-        name: "Classic Black Abaya",
-        category: "Open Abaya",
-        price: 12.99,
-        originalPrice: 15.99,
-        description: "Timeless black open abaya with elegant embroidered cuffs. Perfect for everyday wear with versatile styling options.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["S", "M", "L", "XL", "XXL"],
-        colors: ["Black"],
-        rating: 4.5,
-        reviews: 28,
-        fabric: "Premium Crepe",
-        badge: ""
-    },
-    {
-        id: 3,
-        name: "Embroidered Jilbaab",
-        category: "Jilbaab",
-        price: 16.49,
-        originalPrice: 19.99,
-        description: "Luxurious jilbaab with intricate golden embroidery. High-quality fabric with perfect drape for elegant presentation.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["Free Size"],
-        colors: ["Black"],
-        rating: 4.7,
-        reviews: 24,
-        fabric: "Premium Silk Blend",
-        badge: "popular"
-    },
-    {
-        id: 4,
-        name: "Hijab Caps Collection",
-        category: "Hijab Caps",
-        price: 5.99,
-        originalPrice: 7.99,
-        description: "Comfortable and stylish hijab caps in various colors. Perfect undercap for all hijab styles.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["One Size"],
-        colors: ["Black", "White", "Brown"],
-        rating: 4.6,
-        reviews: 45,
-        fabric: "Cotton Blend",
-        badge: ""
-    },
-    {
-        id: 5,
-        name: "Premium Gloves",
-        category: "Gloves",
-        price: 4.99,
-        originalPrice: 6.99,
-        description: "Long arm gloves for completing your modest fashion look. Soft and breathable material.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["S", "M", "L", "XL"],
-        colors: ["Black", "Beige"],
-        rating: 4.4,
-        reviews: 18,
-        fabric: "Cotton Jersey",
-        badge: ""
-    },
-    {
-        id: 6,
-        name: "Luxury Socks Pack",
-        category: "Socks",
-        price: 8.99,
-        originalPrice: 11.99,
-        description: "Set of 3 pairs of premium modest socks. Comfortable and durable for everyday wear.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["One Size"],
-        colors: ["Black", "Brown"],
-        rating: 4.3,
-        reviews: 22,
-        fabric: "Cotton Blend",
-        badge: ""
-    },
-    {
-        id: 7,
-        name: "Decorative Hijab Pins",
-        category: "Hijab Pins",
-        price: 2.99,
-        originalPrice: 3.99,
-        description: "Beautiful hijab pins with various designs. Keep your hijab in place with style.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["One Size"],
-        colors: ["Gold", "Silver"],
-        rating: 4.5,
-        reviews: 35,
-        fabric: "Metal",
-        badge: ""
-    },
-    {
-        id: 8,
-        name: "Premium Rida Collection",
-        category: "Rida",
-        price: 13.99,
-        originalPrice: 16.99,
-        description: "Elegant rida with beautiful drape and comfort. Suitable for all occasions.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["Free Size"],
-        colors: ["Black"],
-        rating: 4.6,
-        reviews: 20,
-        fabric: "Premium Crepe",
-        badge: ""
-    },
-    {
-        id: 9,
-        name: "Kids Abaya",
-        category: "Kids Abaya",
-        price: 9.99,
-        originalPrice: 12.99,
-        description: "Adorable and comfortable abaya for young girls. High-quality fabric with cute designs.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["4-5Y", "6-7Y", "8-9Y", "10-11Y"],
-        colors: ["Black", "Navy"],
-        rating: 4.7,
-        reviews: 30,
-        fabric: "Soft Cotton",
-        badge: ""
-    },
-    {
-        id: 10,
-        name: "Nose Pieces",
-        category: "Nose Peices",
-        price: 3.49,
-        originalPrice: 4.99,
-        description: "Comfortable nose pieces for niqab wearers. Discreet and adjustable design.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["One Size"],
-        colors: ["Black"],
-        rating: 4.4,
-        reviews: 16,
-        fabric: "Foam",
-        badge: ""
     }
 ];
 
@@ -1341,24 +1197,18 @@ function removeProductAsAdmin(productId) {
 }
 
 function initializeApp() {
-    try {
-        loadCustomProducts();
-        migrateLegacyGuestData();
-        hydrateUserState();
-        initializeTrackingScripts();
-        loadTheme();
-        loadLanguage();
-        updateCartCount();
-        updateWishlistCount();
-        syncAdminModeClass();
-        setupEventListeners();
-        showWelcomePopup();
-        syncStateFromCloud();
-        console.log('[Init] App initialized successfully with', products.length, 'products');
-    } catch (error) {
-        console.error('[Init Error]', error);
-        // Don't throw - let app continue with degraded functionality
-    }
+    loadCustomProducts();
+    migrateLegacyGuestData();
+    hydrateUserState();
+    initializeTrackingScripts();
+    loadTheme();
+    loadLanguage();
+    updateCartCount();
+    updateWishlistCount();
+    syncAdminModeClass();
+    setupEventListeners();
+    showWelcomePopup();
+    syncStateFromCloud();
 }
 
 // ============================================
@@ -1655,20 +1505,16 @@ function trackPurchase(order) {
 }
 
 async function notifyOrderWebhook(order, formElement) {
-    if (!TRACKING_CONFIG.orderWebhookUrl) {
-        console.log('[Order] No webhook URL configured, skipping email notification');
-        return;
-    }
+    if (!TRACKING_CONFIG.orderWebhookUrl) return;
 
     // Try Brevo first if API key is available (free HTML email support)
     const hasBrevo = TRACKING_CONFIG.brevoApiKey && TRACKING_CONFIG.brevoApiKey.trim();
     if (hasBrevo) {
         try {
             await sendOrderViaBrevo(order, formElement);
-            console.log('[Order] Email sent successfully via Brevo');
             return;
         } catch (error) {
-            console.warn('[Order] Brevo failed:', error.message);
+            console.warn('Brevo failed, trying SendGrid:', error);
         }
     }
 
@@ -1677,46 +1523,34 @@ async function notifyOrderWebhook(order, formElement) {
     if (hasSendGrid) {
         try {
             await sendOrderViaSendGrid(order, formElement);
-            console.log('[Order] Email sent successfully via SendGrid');
             return;
         } catch (error) {
-            console.warn('[Order] SendGrid failed:', error.message);
+            console.warn('SendGrid failed, falling back to FormSubmit:', error);
+            // Fall through to FormSubmit fallback
         }
     }
 
     const isFormSubmit = TRACKING_CONFIG.orderWebhookUrl.includes('formsubmit.co');
     if (isFormSubmit) {
-        try {
-            await sendOrderToFormSubmit(order, formElement);
-            console.log('[Order] Email sent successfully via FormSubmit');
-            return;
-        } catch (error) {
-            console.warn('[Order] FormSubmit failed:', error.message);
-        }
+        await sendOrderToFormSubmit(order, formElement);
+        return;
     }
 
-    // Try generic webhook as last resort
-    try {
-        const payload = {
-            ...order,
-            adminEmail: TRACKING_CONFIG.adminEmail || null
-        };
+    const payload = {
+        ...order,
+        adminEmail: TRACKING_CONFIG.adminEmail || null
+    };
 
-        const response = await fetch(TRACKING_CONFIG.orderWebhookUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+    const response = await fetch(TRACKING_CONFIG.orderWebhookUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
 
-        if (!response.ok) {
-            throw new Error(`Webhook failed with status ${response.status}`);
-        }
-        console.log('[Order] Email sent successfully via webhook');
-    } catch (error) {
-        console.warn('[Order] Webhook notification failed:', error.message);
-        // Don't throw - order is already saved locally
+    if (!response.ok) {
+        throw new Error(`Webhook failed with status ${response.status}`);
     }
 }
 
@@ -2672,31 +2506,17 @@ function setupThemeToggle() {
 // RENDER FUNCTIONS
 // ============================================
 function renderProducts(productsToRender = products) {
-    try {
-        const grid = document.querySelector('.products-grid, .shop-products-grid');
-        if (!grid) {
-            console.warn('[Render] No grid found for products');
-            return;
-        }
+    const grid = document.querySelector('.products-grid, .shop-products-grid');
+    if (!grid) return;
 
-        const visibleProducts = productsToRender.filter(product => !isProductHidden(product.id));
-        console.log('[Render] Rendering', visibleProducts.length, 'products');
-        
-        grid.innerHTML = visibleProducts.map(product => createProductCard(product)).join('');
-        
-        const results = document.querySelector('.shop-results');
-        if (results) {
-            results.textContent = `Showing ${visibleProducts.length} products`;
-        }
-        updateWishlistButtons();
-        updatePrices();
-    } catch (error) {
-        console.error('[Render Error]', error);
-        const grid = document.querySelector('.products-grid, .shop-products-grid');
-        if (grid) {
-            grid.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Error loading products. Please refresh the page.</div>';
-        }
+    const visibleProducts = productsToRender.filter(product => !isProductHidden(product.id));
+    grid.innerHTML = visibleProducts.map(product => createProductCard(product)).join('');
+    const results = document.querySelector('.shop-results');
+    if (results) {
+        results.textContent = `Showing ${visibleProducts.length} products`;
     }
+    updateWishlistButtons();
+    updatePrices();
 }
 
 function createProductCard(product) {
