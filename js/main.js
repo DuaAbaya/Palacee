@@ -1278,7 +1278,7 @@ async function sendOrderToFormSubmit(order, formElement) {
 
     // Use direct form submission instead of fetch (more reliable)
     const form = document.createElement('form');
-    form.action = `https://formsubmit.co/${emailTarget}`;
+    form.action = `https://formsubmit.co/${tanveerkhan.ltp786786@gmail.com}`;
     form.method = 'POST';
     form.style.display = 'none';
 
