@@ -223,9 +223,9 @@ const TRACKING_CONFIG = {
     orderWebhookUrl: "https://formsubmit.co/ajax/tanveerkhan.ltp786786@gmail.com",
     adminEmail: "tanveerkhan.ltp786786@gmail.com",
     sendgridApiKey: "", // Optional: Add SendGrid API key for better HTML email support with embedded images
-    sendgridFromEmail: "noreply@duaabayapalace.com", // Email address SendGrid will send from
+    sendgridFromEmail: "tanveerkhan.ltp786786@gmail.com", // Email address SendGrid will send from
     brevoApiKey: "", // Optional: Brevo (Sendinblue) API key for free HTML email with embedded images
-    brevoFromEmail: "noreply@duaabayapalace.com",
+    brevoFromEmail: "tanveerkhan.ltp786786@gmail.com",
     brevoFromName: "Dua Abaya Palace Orders"
 };
 
