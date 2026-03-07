@@ -222,12 +222,25 @@ const TRACKING_CONFIG = {
     metaPixelId: "",
     orderWebhookUrl: "https://formsubmit.co/ajax/tanveerkhan.ltp786786@gmail.com",
     adminEmail: "tanveerkhan.ltp786786@gmail.com",
-    sendgridApiKey: "", // Optional: Add SendGrid API key for better HTML email support with embedded images
-    sendgridFromEmail: "tanveerkhan.ltp786786@gmail.com", // Email address SendGrid will send from
-    brevoApiKey: "", // Optional: Brevo (Sendinblue) API key for free HTML email with embedded images
+    sendgridApiKey: localStorage.getItem('sendgridApiKey') || "", 
+    sendgridFromEmail: "tanveerkhan.ltp786786@gmail.com",
+    brevoApiKey: localStorage.getItem('brevoApiKey') || "", 
     brevoFromEmail: "tanveerkhan.ltp786786@gmail.com",
     brevoFromName: "Dua Abaya Palace Orders"
 };
+
+// Function to set API keys from admin panel (without exposing in code)
+function setEmailApiKeys(brevoKey, sendgridKey) {
+    if (brevoKey) {
+        TRACKING_CONFIG.brevoApiKey = brevoKey;
+        localStorage.setItem('brevoApiKey', brevoKey);
+    }
+    if (sendgridKey) {
+        TRACKING_CONFIG.sendgridApiKey = sendgridKey;
+        localStorage.setItem('sendgridApiKey', sendgridKey);
+    }
+    return { brevoApiKey: !!brevoKey, sendgridApiKey: !!sendgridKey };
+}
 
 const CLOUD_SYNC_CONFIG = {
     enabled: true,
