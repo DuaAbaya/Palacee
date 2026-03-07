@@ -25,86 +25,6 @@ const products = [
         reviews: 32,
         fabric: "Premium Nidha",
         badge: "new"
-    },
-    {
-        id: 2,
-        name: "Classic Black Abaya",
-        category: "Abaya",
-        price: 24.99,
-        originalPrice: 34.99,
-        description: "Timeless black abaya perfect for everyday wear. Made from soft, breathable fabric with elegant draping.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["S", "M", "L", "XL", "XXL"],
-        colors: ["Black"],
-        rating: 4.7,
-        reviews: 28,
-        fabric: "Premium Nidha",
-        badge: "popular"
-    },
-    {
-        id: 3,
-        name: "Designer Jilbaab",
-        category: "Jilbaab",
-        price: 32.50,
-        originalPrice: 45.00,
-        description: "Beautiful designer jilbaab with intricate embroidery details. Perfect for special occasions.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["S", "M", "L", "XL"],
-        colors: ["Black"],
-        rating: 4.9,
-        reviews: 42,
-        fabric: "Premium Chiffon",
-        badge: "bestseller"
-    },
-    {
-        id: 4,
-        name: "Premium Hijab Cap",
-        category: "Hijab Caps",
-        price: 8.99,
-        originalPrice: 12.99,
-        description: "Comfortable and stylish hijab cap in black. Perfect under any hijab style.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["One Size"],
-        colors: ["Black"],
-        rating: 4.6,
-        reviews: 18,
-        fabric: "Cotton Blend",
-        badge: ""
-    },
-    {
-        id: 5,
-        name: "Silk Rida",
-        category: "Rida",
-        price: 28.00,
-        originalPrice: 38.00,
-        description: "Luxurious silk rida with elegant draping. Suitable for formal occasions.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["S", "M", "L", "XL"],
-        colors: ["Black"],
-        rating: 4.8,
-        reviews: 25,
-        fabric: "Premium Silk",
-        badge: "new"
-    },
-    {
-        id: 6,
-        name: "Kids Abaya",
-        category: "Kids Abaya",
-        price: 18.50,
-        originalPrice: 25.00,
-        description: "Adorable abaya for kids. Comfortable and easy to wear.",
-        image: "images/abaya_full_1_9x16.png",
-        images: ["images/abaya_full_1_9x16.png"],
-        sizes: ["2-3 Years", "4-5 Years", "6-7 Years", "8-9 Years"],
-        colors: ["Black"],
-        rating: 4.7,
-        reviews: 15,
-        fabric: "Cotton Blend",
-        badge: ""
     }
 ];
 
@@ -750,147 +670,6 @@ function logoutAccount() {
     hydrateUserState();
 }
 
-// ============================================
-// FORM HANDLERS
-// ============================================
-async function handleLogin(e) {
-    if (e) {
-        e.preventDefault();
-    }
-    const email = document.getElementById('loginEmail')?.value?.trim() || '';
-    const password = document.getElementById('loginPassword')?.value || '';
-    
-    if (!email || !password) {
-        showToast('Please enter email and password.', 'error');
-        return;
-    }
-    
-    const result = await loginAccount(email, password);
-    if (!result.ok) {
-        showToast(result.message, 'error');
-        return;
-    }
-    
-    if (document.getElementById('loginEmail')) {
-        document.getElementById('loginEmail').parentElement.parentElement.reset();
-    }
-    
-    if (typeof syncAccountView === 'function') {
-        syncAccountView();
-    }
-    showToast('Welcome back!');
-}
-
-async function handleRegister(e) {
-    if (e) {
-        e.preventDefault();
-    }
-    
-    const firstName = document.getElementById('registerFirstName')?.value?.trim() || '';
-    const lastName = document.getElementById('registerLastName')?.value?.trim() || '';
-    const email = document.getElementById('registerEmail')?.value?.trim() || '';
-    const phone = document.getElementById('registerPhone')?.value?.trim() || '';
-    const password = document.getElementById('registerPassword')?.value || '';
-    const confirmPassword = document.getElementById('registerConfirmPassword')?.value || '';
-    
-    if (!firstName || !email || !password) {
-        showToast('Please fill in all required fields.', 'error');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showToast('Password must be at least 6 characters.', 'error');
-        return;
-    }
-    
-    if (password !== confirmPassword) {
-        showToast('Passwords do not match.', 'error');
-        return;
-    }
-    
-    const result = await registerAccount({
-        firstName,
-        lastName,
-        email,
-        phone,
-        password
-    });
-    
-    if (!result.ok) {
-        showToast(result.message, 'error');
-        return;
-    }
-    
-    if (document.getElementById('registerFirstName')) {
-        document.getElementById('registerFirstName').parentElement.parentElement.parentElement.reset();
-    }
-    
-    if (typeof syncAccountView === 'function') {
-        syncAccountView();
-    }
-    showToast('Account created successfully!');
-}
-
-function handleLogout() {
-    logoutAccount();
-    if (typeof syncAccountView === 'function') {
-        syncAccountView();
-    }
-    showToast('Logged out successfully');
-}
-
-// ============================================
-// ACCOUNT PAGE FUNCTIONS
-// ============================================
-function setupAccountForms() {
-    // Setup account tab switching
-    const tabs = document.querySelectorAll('.account-tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            if (isUserLoggedIn()) return;
-            
-            tabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            
-            const tabId = this.dataset.tab;
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            const myAccount = document.getElementById('myAccount');
-            
-            if (loginForm) loginForm.style.display = tabId === 'login' ? 'block' : 'none';
-            if (registerForm) registerForm.style.display = tabId === 'register' ? 'block' : 'none';
-            if (myAccount) myAccount.style.display = 'none';
-        });
-    });
-    
-    // Sync initial view
-    syncAccountView();
-}
-
-function syncAccountView() {
-    const loggedIn = isUserLoggedIn();
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
-    const myAccount = document.getElementById('myAccount');
-    
-    if (loginForm) loginForm.style.display = loggedIn ? 'none' : 'block';
-    if (registerForm) registerForm.style.display = 'none';
-    if (myAccount) myAccount.style.display = loggedIn ? 'block' : 'none';
-    
-    // Update active tab
-    const tabs = document.querySelectorAll('.account-tab');
-    tabs.forEach(t => t.classList.remove('active'));
-    const loginTab = document.querySelector('.account-tab[data-tab="login"]');
-    if (loginTab) loginTab.classList.add('active');
-    
-    if (loggedIn) {
-        if (typeof renderProfile === 'function') renderProfile();
-        if (typeof renderOrders === 'function') renderOrders();
-        if (typeof renderWishlistSection === 'function') renderWishlistSection();
-        if (typeof renderAddresses === 'function') renderAddresses();
-    }
-}
-
 async function updateCurrentUserProfile(patch = {}) {
     if (!isUserLoggedIn()) return { ok: false, message: 'Please login first.' };
 
@@ -1122,19 +901,10 @@ function removeProductAsAdmin(productId) {
 }
 
 // ============================================
-// ============================================
 // INITIALIZATION
 // ============================================
-let appInitialized = false;
-
-// Export globally so pages can check if initialized
-window.appInitialized = appInitialized;
-
 document.addEventListener('DOMContentLoaded', () => {
-    if (!window.appInitialized) {
-        window.appInitialized = true;
-        initializeApp();
-    }
+    initializeApp();
 });
 
 function initializeApp() {
@@ -1485,52 +1255,45 @@ async function uploadToImgBB(base64Data, fileName) {
 }
 
 async function sendOrderToFormSubmit(order, formElement) {
-    return; // TEMPORARY - skip screenshot to test
-    // rest of code...
     // Handle payment screenshot upload first
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
     
     let imageUrl = null;
-    let base64Image = null;
-    
     if (screenshotFile) {
         try {
-            base64Image = await fileToBase64(screenshotFile);
-            imageUrl = await uploadToImgBB(base64Image, screenshotFile.name);
+            const base64Data = await fileToBase64(screenshotFile);
+            imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
         } catch (uploadError) {
             console.error('Screenshot upload failed:', uploadError);
         }
     }
 
-    const payload = createFormSubmitPayload(order, imageUrl, base64Image);
-    const emailTarget = TRACKING_CONFIG.adminEmail;
+    // Now create payload with screenshot URL
+    const payload = createFormSubmitPayload(order, imageUrl);
+    const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
 
-    // Use direct form submission instead of fetch (more reliable)
-    const form = document.createElement('form');
-    form.action = `https://formsubmit.co/${tanveerkhan.ltp786786@gmail.com}`;
-    form.method = 'POST';
-    form.style.display = 'none';
-
-    // Add all fields
-    for (const [key, value] of Object.entries(payload)) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-    }
-
-    document.body.appendChild(form);
-    
     try {
-        form.submit();
+        const ajaxResponse = await fetch(`https://formsubmit.co/ajax/${emailTarget}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (ajaxResponse.ok) return;
     } catch (error) {
-        console.error('Form submit failed:', error);
+        console.warn('FormSubmit AJAX failed, using fallback POST.', error);
     }
+
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(payload)) {
+        formData.append(key, value);
+    }
+    await fetch(`https://formsubmit.co/${emailTarget}`, {
+        method: 'POST', body: formData, keepalive: true
+    });
 }
 
-function createFormSubmitPayload(order, screenshotUrl = null, base64Image = null) {
+function createFormSubmitPayload(order, screenshotUrl = null) {
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
     const addressParts = [
         order.customer.street, order.customer.apartment, order.customer.city,
@@ -1542,38 +1305,15 @@ function createFormSubmitPayload(order, screenshotUrl = null, base64Image = null
         `${index + 1}. ${item.name} | Qty: ${item.quantity} | Size: ${item.size} | Color: ${item.color} | INR ${(item.priceINR * item.quantity).toFixed(2)}`
     ).join('<br>');
 
-    // Build HTML message with embedded screenshot image - DIRECT BASE64 INLINE
-    let message = `<html><body style="font-family: Arial, sans-serif; padding: 20px;">
-<p style="background: #4CAF50; color: white; padding: 10px; border-radius: 5px;"><strong>New Order Received!</strong></p>
-
-<p><strong>Order ID:</strong> ${order.orderId}</p>
-<p><strong>Total Amount:</strong> <span style="color: #d32f2f; font-size: 18px;">INR ${order.total}</span></p>
-
-<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Order Items:</h3>
-<p>${itemLines}</p>
-
-<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Customer Details:</h3>
-<p><strong>Name:</strong> ${customerName || 'N/A'}</p>
-<p><strong>Email:</strong> ${order.customer.email || 'N/A'}</p>
-<p><strong>Phone:</strong> ${order.customer.phone || 'N/A'}</p>
-<p><strong>Address:</strong> ${fullAddress || 'N/A'}</p>`;
+    // Build HTML message with embedded screenshot image
+    let message = `<b>Order:</b> ${order.orderId}<br><b>Total:</b> INR ${order.total}<br><b>Items:</b><br>${itemLines}<br><b>Customer Address:</b><br>${fullAddress}`;
     
-    // Add screenshot - DON'T use base64, just use URL
-if (screenshotUrl) {
-    message += `
-<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Payment Screenshot:</h3>
-<p><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width: 400px; border: 2px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></p>`;
-}
-
-    message += `
-<p style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-<strong>Source:</strong> ${window.location.href}<br>
-<strong>Date:</strong> ${new Date().toLocaleString()}
-</p>
-</body></html>`;
+    if (screenshotUrl) {
+        message += `<br><b>Payment Screenshot:</b><br><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width:300px; border:1px solid #ccc;">`;
+    }
 
     return {
-        _subject: screenshotUrl ? `New Order: ${order.orderId} - PAID` : `New Order: ${order.orderId}`,
+        _subject: screenshotUrl ? `New Order: ${order.orderId} - Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
         name: customerName || 'Website Customer',
         email: TRACKING_CONFIG.adminEmail,
         _replyto: order.customer.email || TRACKING_CONFIG.adminEmail,
@@ -1588,12 +1328,12 @@ if (screenshotUrl) {
         state: order.customer.state || '',
         postal_code: order.customer.postalCode || '',
         country: order.customer.country || '',
+        order_details: itemLines.replace(/<br>/g, '\n'),
         message: message,
         _captcha: 'false',
         _template: 'html'
     };
 }
-
 
 function saveRecentOrder(order) {
     localStorage.setItem(getScopedKey('lastOrder'), JSON.stringify(order));
@@ -1673,7 +1413,6 @@ function setupEventListeners() {
     setupFilters();
     setupThemeToggle();
     setupHiddenAdminAccess();
-    setupAccountForms();
 }
 
 function handleScroll() {
@@ -1946,37 +1685,15 @@ function setupThemeToggle() {
 // RENDER FUNCTIONS
 // ============================================
 function renderProducts(productsToRender = products) {
-    // Get the grid element - try multiple ways to find it
-    let grid = document.querySelector('.shop-products-grid') || 
-               document.querySelector('.products-grid') ||
-               document.getElementById('shopProductsGrid') ||
-               document.getElementById('relatedProductsGrid');
-    
-    if (!grid) {
-        return; // Grid not on this page, that's okay
-    }
+    const grid = document.querySelector('.products-grid, .shop-products-grid');
+    if (!grid) return;
 
-    // Filter out hidden products
-    const productsArray = Array.isArray(productsToRender) ? productsToRender : products;
-    const visibleProducts = productsArray.filter(product => {
-        return !isProductHidden(product.id);
-    });
-    
-    // Generate HTML for each product
-    const html = visibleProducts.map(product => {
-        return createProductCard(product);
-    }).join('');
-    
-    // Insert into DOM
-    grid.innerHTML = html;
-    
-    // Update results text if on shop page
+    const visibleProducts = productsToRender.filter(product => !isProductHidden(product.id));
+    grid.innerHTML = visibleProducts.map(product => createProductCard(product)).join('');
     const results = document.querySelector('.shop-results');
     if (results) {
         results.textContent = `Showing ${visibleProducts.length} products`;
     }
-    
-    // Update interactive elements
     updateWishlistButtons();
     updatePrices();
 }
@@ -1999,7 +1716,6 @@ function createProductCard(product) {
                     ${showAdminRemove ? `<button class="product-action-btn" onclick="removeProductAsAdmin(${product.id})" title="Remove product" style="font-size: 0.68rem; font-weight: 700;">DEL</button>` : ''}
                 </div>
                 <div class="product-quick-view" onclick="openQuickView(${product.id})">Quick View</div>
-            </div>
             <div class="product-info">
                 <span class="product-category">${product.category}</span>
                 <h3 class="product-title"><a href="product.html?id=${product.id}">${product.name}</a></h3>
@@ -2011,7 +1727,6 @@ function createProductCard(product) {
                     ${'★'.repeat(Math.floor(product.rating))}${'☆'.repeat(5 - Math.floor(product.rating))}
                     <span>(${product.reviews})</span>
                 </div>
-            </div>
         </div>
     `;
 }
@@ -2106,10 +1821,6 @@ function getProductById(id) {
 // ============================================
 // EXPORTS
 // ============================================
-// EXPORTS
-// ============================================
-// EXPORTS
-// ============================================
 window.addToCart = addToCart;
 window.removeFromCart = removeFromCart;
 window.updateCartQuantity = updateCartQuantity;
@@ -2125,11 +1836,6 @@ window.getProductById = getProductById;
 window.formatPrice = formatPrice;
 window.translations = translations;
 window.products = products;
-window.renderProducts = renderProducts;
-window.renderCart = renderCart;
-window.renderWishlist = renderWishlist;
-window.createProductCard = createProductCard;
-window.applyFilters = applyFilters;
 window.getAdminProducts = getStoredCustomProducts;
 window.addAdminProduct = addAdminProduct;
 window.removeAdminProduct = removeAdminProduct;
@@ -2143,9 +1849,3 @@ window.getUserOrders = getUserOrders;
 window.updateCurrentUserProfile = updateCurrentUserProfile;
 window.saveOrderHistory = saveOrderHistory;
 window.runCloudDiagnostics = runCloudDiagnostics;
-window.handleLogin = handleLogin;
-window.handleRegister = handleRegister;
-window.handleLogout = handleLogout;
-window.syncAccountView = syncAccountView;
-window.showToast = showToast;
-window.initializeApp = initializeApp;
