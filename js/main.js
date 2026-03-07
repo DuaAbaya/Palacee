@@ -224,7 +224,7 @@ const TRACKING_CONFIG = {
     adminEmail: "tanveerkhan.ltp786786@gmail.com",
     sendgridApiKey: localStorage.getItem('sendgridApiKey') || "", 
     sendgridFromEmail: "tanveerkhan.ltp786786@gmail.com",
-    brevoApiKey: localStorage.getItem('brevoApiKey') || "", 
+    brevoApiKey: localStorage.getItem('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') || "", 
     brevoFromEmail: "tanveerkhan.ltp786786@gmail.com",
     brevoFromName: "Dua Abaya Palace Orders"
 };
