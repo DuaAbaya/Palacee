@@ -25,6 +25,99 @@ const products = [
         reviews: 32,
         fabric: "Premium Nidha",
         badge: "new"
+    },
+    {
+        id: 2,
+        name: "Classic Black Abaya",
+        category: "Abaya",
+        price: 18.99,
+        originalPrice: 24.99,
+        description: "Timeless classic black abaya with elegant stitching. Perfect for everyday wear and special occasions.",
+        image: "images/abaya_full_2_9x16.png",
+        images: [
+            "images/abaya_full_2_9x16.png",
+            "images/abaya_full_1_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL", "XXL"],
+        colors: ["Black", "Navy"],
+        rating: 4.6,
+        reviews: 45,
+        fabric: "Premium Nidha",
+        badge: "best-seller"
+    },
+    {
+        id: 3,
+        name: "Embroidered Jilbaab",
+        category: "Jilbaab",
+        price: 22.50,
+        originalPrice: 28.00,
+        description: "Beautiful embroidered jilbaab with intricate designs. Made with premium fabric for maximum comfort.",
+        image: "images/abaya_full_3_9x16.png",
+        images: [
+            "images/abaya_full_3_9x16.png",
+            "images/abaya_full_1_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL"],
+        colors: ["Black", "Burgundy"],
+        rating: 4.9,
+        reviews: 28,
+        fabric: "Saudi Silk",
+        badge: "new"
+    },
+    {
+        id: 4,
+        name: "Kids Abaya - Pink",
+        category: "Kids Abaya",
+        price: 12.00,
+        originalPrice: 15.00,
+        description: "Cute and comfortable pink abaya for kids. Soft fabric perfect for daily wear.",
+        image: "images/abaya_full_1_9x16.png",
+        images: [
+            "images/abaya_full_1_9x16.png"
+        ],
+        sizes: ["XS", "S", "M", "L"],
+        colors: ["Pink", "Black"],
+        rating: 4.7,
+        reviews: 18,
+        fabric: "Cotton Blend",
+        badge: "new"
+    },
+    {
+        id: 5,
+        name: "Premium Nakab - Gold",
+        category: "Nakab",
+        price: 25.00,
+        originalPrice: 32.00,
+        description: "Elegant nakab with golden embroidery. Premium quality fabric with comfortable fit.",
+        image: "images/abaya_full_2_9x16.png",
+        images: [
+            "images/abaya_full_2_9x16.png",
+            "images/abaya_full_3_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL", "XXL"],
+        colors: ["Black"],
+        rating: 4.8,
+        reviews: 52,
+        fabric: "Premium Nidha",
+        badge: "best-seller"
+    },
+    {
+        id: 6,
+        name: "Rida Set",
+        category: "Rida",
+        price: 20.00,
+        originalPrice: 25.00,
+        description: "Beautiful rida set with matching hijab. Perfect for prayers and special occasions.",
+        image: "images/abaya_full_3_9x16.png",
+        images: [
+            "images/abaya_full_3_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL"],
+        colors: ["Black", "Beige", "Burgundy"],
+        rating: 4.5,
+        reviews: 22,
+        fabric: "Premium Chiffon",
+        badge: "new"
     }
 ];
 
@@ -1255,52 +1348,45 @@ async function uploadToImgBB(base64Data, fileName) {
 }
 
 async function sendOrderToFormSubmit(order, formElement) {
-    return; // TEMPORARY - skip screenshot to test
-    // rest of code...
     // Handle payment screenshot upload first
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
     
     let imageUrl = null;
-    let base64Image = null;
-    
     if (screenshotFile) {
         try {
-            base64Image = await fileToBase64(screenshotFile);
-            imageUrl = await uploadToImgBB(base64Image, screenshotFile.name);
+            const base64Data = await fileToBase64(screenshotFile);
+            imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
         } catch (uploadError) {
             console.error('Screenshot upload failed:', uploadError);
         }
     }
 
-    const payload = createFormSubmitPayload(order, imageUrl, base64Image);
-    const emailTarget = TRACKING_CONFIG.adminEmail;
+    // Now create payload with screenshot URL
+    const payload = createFormSubmitPayload(order, imageUrl);
+    const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
 
-    // Use direct form submission instead of fetch (more reliable)
-    const form = document.createElement('form');
-    form.action = `https://formsubmit.co/${tanveerkhan.ltp786786@gmail.com}`;
-    form.method = 'POST';
-    form.style.display = 'none';
-
-    // Add all fields
-    for (const [key, value] of Object.entries(payload)) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-    }
-
-    document.body.appendChild(form);
-    
     try {
-        form.submit();
+        const ajaxResponse = await fetch(`https://formsubmit.co/ajax/${emailTarget}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (ajaxResponse.ok) return;
     } catch (error) {
-        console.error('Form submit failed:', error);
+        console.warn('FormSubmit AJAX failed, using fallback POST.', error);
     }
+
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(payload)) {
+        formData.append(key, value);
+    }
+    await fetch(`https://formsubmit.co/${emailTarget}`, {
+        method: 'POST', body: formData, keepalive: true
+    });
 }
 
-function createFormSubmitPayload(order, screenshotUrl = null, base64Image = null) {
+function createFormSubmitPayload(order, screenshotUrl = null) {
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
     const addressParts = [
         order.customer.street, order.customer.apartment, order.customer.city,
@@ -1312,38 +1398,15 @@ function createFormSubmitPayload(order, screenshotUrl = null, base64Image = null
         `${index + 1}. ${item.name} | Qty: ${item.quantity} | Size: ${item.size} | Color: ${item.color} | INR ${(item.priceINR * item.quantity).toFixed(2)}`
     ).join('<br>');
 
-    // Build HTML message with embedded screenshot image - DIRECT BASE64 INLINE
-    let message = `<html><body style="font-family: Arial, sans-serif; padding: 20px;">
-<p style="background: #4CAF50; color: white; padding: 10px; border-radius: 5px;"><strong>New Order Received!</strong></p>
-
-<p><strong>Order ID:</strong> ${order.orderId}</p>
-<p><strong>Total Amount:</strong> <span style="color: #d32f2f; font-size: 18px;">INR ${order.total}</span></p>
-
-<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Order Items:</h3>
-<p>${itemLines}</p>
-
-<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Customer Details:</h3>
-<p><strong>Name:</strong> ${customerName || 'N/A'}</p>
-<p><strong>Email:</strong> ${order.customer.email || 'N/A'}</p>
-<p><strong>Phone:</strong> ${order.customer.phone || 'N/A'}</p>
-<p><strong>Address:</strong> ${fullAddress || 'N/A'}</p>`;
+    // Build HTML message with embedded screenshot image
+    let message = `<b>Order:</b> ${order.orderId}<br><b>Total:</b> INR ${order.total}<br><b>Items:</b><br>${itemLines}<br><b>Customer Address:</b><br>${fullAddress}`;
     
-    // Add screenshot - DON'T use base64, just use URL
-if (screenshotUrl) {
-    message += `
-<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Payment Screenshot:</h3>
-<p><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width: 400px; border: 2px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></p>`;
-}
-
-    message += `
-<p style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-<strong>Source:</strong> ${window.location.href}<br>
-<strong>Date:</strong> ${new Date().toLocaleString()}
-</p>
-</body></html>`;
+    if (screenshotUrl) {
+        message += `<br><b>Payment Screenshot:</b><br><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width:300px; border:1px solid #ccc;">`;
+    }
 
     return {
-        _subject: screenshotUrl ? `New Order: ${order.orderId} - PAID` : `New Order: ${order.orderId}`,
+        _subject: screenshotUrl ? `New Order: ${order.orderId} - Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
         name: customerName || 'Website Customer',
         email: TRACKING_CONFIG.adminEmail,
         _replyto: order.customer.email || TRACKING_CONFIG.adminEmail,
@@ -1358,12 +1421,12 @@ if (screenshotUrl) {
         state: order.customer.state || '',
         postal_code: order.customer.postalCode || '',
         country: order.customer.country || '',
+        order_details: itemLines.replace(/<br>/g, '\n'),
         message: message,
         _captcha: 'false',
         _template: 'html'
     };
 }
-
 
 function saveRecentOrder(order) {
     localStorage.setItem(getScopedKey('lastOrder'), JSON.stringify(order));

@@ -134,7 +134,12 @@
 
     <script src="js/main.js"></script>
         <script>
-        document.addEventListener('DOMContentLoaded', initializeApp);
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.appInitialized) {
+                window.appInitialized = true;
+                initializeApp();
+            }
+        });
 
         const CONTACT_FORM_TARGET_EMAIL = 'tanveerkhan.ltp786786@gmail.com';
 

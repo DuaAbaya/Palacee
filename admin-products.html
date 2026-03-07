@@ -174,7 +174,10 @@
         const INR_PER_USD = 83;
 
         document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
+            if (!window.appInitialized) {
+                window.appInitialized = true;
+                initializeApp();
+            }
             checkAdminAccess();
         });
 
