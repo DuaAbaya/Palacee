@@ -25,6 +25,99 @@ const products = [
         reviews: 32,
         fabric: "Premium Nidha",
         badge: "new"
+    },
+    {
+        id: 2,
+        name: "Classic Black Abaya",
+        category: "Abaya",
+        price: 18.99,
+        originalPrice: 24.99,
+        description: "Timeless classic black abaya with elegant stitching. Perfect for everyday wear and special occasions.",
+        image: "images/abaya_full_2_9x16.png",
+        images: [
+            "images/abaya_full_2_9x16.png",
+            "images/abaya_full_1_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL", "XXL"],
+        colors: ["Black", "Navy"],
+        rating: 4.6,
+        reviews: 45,
+        fabric: "Premium Nidha",
+        badge: "best-seller"
+    },
+    {
+        id: 3,
+        name: "Embroidered Jilbaab",
+        category: "Jilbaab",
+        price: 22.50,
+        originalPrice: 28.00,
+        description: "Beautiful embroidered jilbaab with intricate designs. Made with premium fabric for maximum comfort.",
+        image: "images/abaya_full_3_9x16.png",
+        images: [
+            "images/abaya_full_3_9x16.png",
+            "images/abaya_full_1_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL"],
+        colors: ["Black", "Burgundy"],
+        rating: 4.9,
+        reviews: 28,
+        fabric: "Saudi Silk",
+        badge: "new"
+    },
+    {
+        id: 4,
+        name: "Kids Abaya - Pink",
+        category: "Kids Abaya",
+        price: 12.00,
+        originalPrice: 15.00,
+        description: "Cute and comfortable pink abaya for kids. Soft fabric perfect for daily wear.",
+        image: "images/abaya_full_1_9x16.png",
+        images: [
+            "images/abaya_full_1_9x16.png"
+        ],
+        sizes: ["XS", "S", "M", "L"],
+        colors: ["Pink", "Black"],
+        rating: 4.7,
+        reviews: 18,
+        fabric: "Cotton Blend",
+        badge: "new"
+    },
+    {
+        id: 5,
+        name: "Premium Nakab - Gold",
+        category: "Nakab",
+        price: 25.00,
+        originalPrice: 32.00,
+        description: "Elegant nakab with golden embroidery. Premium quality fabric with comfortable fit.",
+        image: "images/abaya_full_2_9x16.png",
+        images: [
+            "images/abaya_full_2_9x16.png",
+            "images/abaya_full_3_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL", "XXL"],
+        colors: ["Black"],
+        rating: 4.8,
+        reviews: 52,
+        fabric: "Premium Nidha",
+        badge: "best-seller"
+    },
+    {
+        id: 6,
+        name: "Rida Set",
+        category: "Rida",
+        price: 20.00,
+        originalPrice: 25.00,
+        description: "Beautiful rida set with matching hijab. Perfect for prayers and special occasions.",
+        image: "images/abaya_full_3_9x16.png",
+        images: [
+            "images/abaya_full_3_9x16.png"
+        ],
+        sizes: ["S", "M", "L", "XL"],
+        colors: ["Black", "Beige", "Burgundy"],
+        rating: 4.5,
+        reviews: 22,
+        fabric: "Premium Chiffon",
+        badge: "new"
     }
 ];
 
