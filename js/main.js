@@ -1210,9 +1210,74 @@ async function notifyOrderWebhook(order, formElement) {
     }
 }
 
+// Helper function to convert file to base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+
+// Upload image to ImgBB and return URL
+async function uploadToImgBB(base64Data, fileName) {
+    const formData = new FormData();
+    try {
+        const arr = base64Data.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        formData.append('image', blob, fileName || 'screenshot.jpg');
+    } catch (error) {
+        console.error('Error converting base64 to blob:', error);
+        return null;
+    }
+    
+    try {
+        const response = await fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae7f9089d85875571358', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        if (data && data.data && data.data.url) {
+            return data.data.url;
+        }
+    } catch (error) {
+        console.error('ImgBB upload error:', error);
+    }
+    return null;
+}
+
 async function sendOrderToFormSubmit(order, formElement) {
     const payload = createFormSubmitPayload(order);
     const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
+
+    // Handle payment screenshot upload
+    const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
+    const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
+    
+    let imageUrl = null;
+    if (screenshotFile) {
+        try {
+            const base64Data = await fileToBase64(screenshotFile);
+            imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
+            if (imageUrl) {
+                // Add screenshot URL to payload
+                payload.payment_screenshot = imageUrl;
+                payload.screenshot_link = imageUrl;
+                // Update subject to indicate screenshot attached
+                payload._subject = `New Checkout Order: ${order.orderId} - Payment Screenshot Attached`;
+            }
+        } catch (uploadError) {
+            console.error('Screenshot upload failed:', uploadError);
+        }
+    }
 
     try {
         const ajaxResponse = await fetch(`https://formsubmit.co/ajax/${emailTarget}`, {
@@ -1240,6 +1305,7 @@ function createFormSubmitPayload(order) {
         order.customer.street, order.customer.apartment, order.customer.city,
         order.customer.state, order.customer.postalCode, order.customer.country
     ].filter(Boolean);
+    const fullAddress = addressParts.join(', ');
 
     const itemLines = order.items.map((item, index) =>
         `${index + 1}. ${item.name} | Qty: ${item.quantity} | Size: ${item.size} | Color: ${item.color} | INR ${(item.priceINR * item.quantity).toFixed(2)}`
@@ -1254,8 +1320,17 @@ function createFormSubmitPayload(order) {
         order_id: order.orderId,
         payment_method: order.paymentMethod,
         order_total_inr: String(order.total),
+        // Address fields - ADDED
+        address: fullAddress,
+        street: order.customer.street || '',
+        apartment: order.customer.apartment || '',
+        city: order.customer.city || '',
+        state: order.customer.state || '',
+        postal_code: order.customer.postalCode || '',
+        country: order.customer.country || '',
+        // Order details
         order_details: itemLines,
-        message: `Order: ${order.orderId}\nTotal: INR ${order.total}\nItems:\n${itemLines}`,
+        message: `Order: ${order.orderId}\nTotal: INR ${order.total}\nItems:\n${itemLines}\n\nCustomer Address:\n${fullAddress}`,
         _captcha: 'false',
         _template: 'table'
     };
