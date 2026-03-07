@@ -235,7 +235,10 @@
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
+            if (!window.appInitialized) {
+                window.appInitialized = true;
+                initializeApp();
+            }
             setupAccountTabs();
             syncAccountView();
             window.addEventListener('userStateUpdated', () => {

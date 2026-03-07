@@ -225,10 +225,30 @@
 
     <script src="js/main.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
-            renderProducts();
-        });
+        function renderShopPage() {
+            // Ensure initializeApp has been called
+            if (!window.appInitialized) {
+                window.appInitialized = true;
+                if (typeof initializeApp === 'function') {
+                    initializeApp();
+                }
+            }
+            
+            // Now render products
+            setTimeout(() => {
+                if (typeof renderProducts === 'function') {
+                    renderProducts();
+                }
+            }, 100);
+        }
+        
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderShopPage);
+        } else {
+            // DOM already loaded
+            renderShopPage();
+        }
     </script>
 </body>
 </html>

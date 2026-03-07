@@ -25,6 +25,86 @@ const products = [
         reviews: 32,
         fabric: "Premium Nidha",
         badge: "new"
+    },
+    {
+        id: 2,
+        name: "Classic Black Abaya",
+        category: "Abaya",
+        price: 24.99,
+        originalPrice: 34.99,
+        description: "Timeless black abaya perfect for everyday wear. Made from soft, breathable fabric with elegant draping.",
+        image: "images/abaya_full_1_9x16.png",
+        images: ["images/abaya_full_1_9x16.png"],
+        sizes: ["S", "M", "L", "XL", "XXL"],
+        colors: ["Black"],
+        rating: 4.7,
+        reviews: 28,
+        fabric: "Premium Nidha",
+        badge: "popular"
+    },
+    {
+        id: 3,
+        name: "Designer Jilbaab",
+        category: "Jilbaab",
+        price: 32.50,
+        originalPrice: 45.00,
+        description: "Beautiful designer jilbaab with intricate embroidery details. Perfect for special occasions.",
+        image: "images/abaya_full_1_9x16.png",
+        images: ["images/abaya_full_1_9x16.png"],
+        sizes: ["S", "M", "L", "XL"],
+        colors: ["Black"],
+        rating: 4.9,
+        reviews: 42,
+        fabric: "Premium Chiffon",
+        badge: "bestseller"
+    },
+    {
+        id: 4,
+        name: "Premium Hijab Cap",
+        category: "Hijab Caps",
+        price: 8.99,
+        originalPrice: 12.99,
+        description: "Comfortable and stylish hijab cap in black. Perfect under any hijab style.",
+        image: "images/abaya_full_1_9x16.png",
+        images: ["images/abaya_full_1_9x16.png"],
+        sizes: ["One Size"],
+        colors: ["Black"],
+        rating: 4.6,
+        reviews: 18,
+        fabric: "Cotton Blend",
+        badge: ""
+    },
+    {
+        id: 5,
+        name: "Silk Rida",
+        category: "Rida",
+        price: 28.00,
+        originalPrice: 38.00,
+        description: "Luxurious silk rida with elegant draping. Suitable for formal occasions.",
+        image: "images/abaya_full_1_9x16.png",
+        images: ["images/abaya_full_1_9x16.png"],
+        sizes: ["S", "M", "L", "XL"],
+        colors: ["Black"],
+        rating: 4.8,
+        reviews: 25,
+        fabric: "Premium Silk",
+        badge: "new"
+    },
+    {
+        id: 6,
+        name: "Kids Abaya",
+        category: "Kids Abaya",
+        price: 18.50,
+        originalPrice: 25.00,
+        description: "Adorable abaya for kids. Comfortable and easy to wear.",
+        image: "images/abaya_full_1_9x16.png",
+        images: ["images/abaya_full_1_9x16.png"],
+        sizes: ["2-3 Years", "4-5 Years", "6-7 Years", "8-9 Years"],
+        colors: ["Black"],
+        rating: 4.7,
+        reviews: 15,
+        fabric: "Cotton Blend",
+        badge: ""
     }
 ];
 
@@ -670,6 +750,147 @@ function logoutAccount() {
     hydrateUserState();
 }
 
+// ============================================
+// FORM HANDLERS
+// ============================================
+async function handleLogin(e) {
+    if (e) {
+        e.preventDefault();
+    }
+    const email = document.getElementById('loginEmail')?.value?.trim() || '';
+    const password = document.getElementById('loginPassword')?.value || '';
+    
+    if (!email || !password) {
+        showToast('Please enter email and password.', 'error');
+        return;
+    }
+    
+    const result = await loginAccount(email, password);
+    if (!result.ok) {
+        showToast(result.message, 'error');
+        return;
+    }
+    
+    if (document.getElementById('loginEmail')) {
+        document.getElementById('loginEmail').parentElement.parentElement.reset();
+    }
+    
+    if (typeof syncAccountView === 'function') {
+        syncAccountView();
+    }
+    showToast('Welcome back!');
+}
+
+async function handleRegister(e) {
+    if (e) {
+        e.preventDefault();
+    }
+    
+    const firstName = document.getElementById('registerFirstName')?.value?.trim() || '';
+    const lastName = document.getElementById('registerLastName')?.value?.trim() || '';
+    const email = document.getElementById('registerEmail')?.value?.trim() || '';
+    const phone = document.getElementById('registerPhone')?.value?.trim() || '';
+    const password = document.getElementById('registerPassword')?.value || '';
+    const confirmPassword = document.getElementById('registerConfirmPassword')?.value || '';
+    
+    if (!firstName || !email || !password) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showToast('Password must be at least 6 characters.', 'error');
+        return;
+    }
+    
+    if (password !== confirmPassword) {
+        showToast('Passwords do not match.', 'error');
+        return;
+    }
+    
+    const result = await registerAccount({
+        firstName,
+        lastName,
+        email,
+        phone,
+        password
+    });
+    
+    if (!result.ok) {
+        showToast(result.message, 'error');
+        return;
+    }
+    
+    if (document.getElementById('registerFirstName')) {
+        document.getElementById('registerFirstName').parentElement.parentElement.parentElement.reset();
+    }
+    
+    if (typeof syncAccountView === 'function') {
+        syncAccountView();
+    }
+    showToast('Account created successfully!');
+}
+
+function handleLogout() {
+    logoutAccount();
+    if (typeof syncAccountView === 'function') {
+        syncAccountView();
+    }
+    showToast('Logged out successfully');
+}
+
+// ============================================
+// ACCOUNT PAGE FUNCTIONS
+// ============================================
+function setupAccountForms() {
+    // Setup account tab switching
+    const tabs = document.querySelectorAll('.account-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            if (isUserLoggedIn()) return;
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            const tabId = this.dataset.tab;
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const myAccount = document.getElementById('myAccount');
+            
+            if (loginForm) loginForm.style.display = tabId === 'login' ? 'block' : 'none';
+            if (registerForm) registerForm.style.display = tabId === 'register' ? 'block' : 'none';
+            if (myAccount) myAccount.style.display = 'none';
+        });
+    });
+    
+    // Sync initial view
+    syncAccountView();
+}
+
+function syncAccountView() {
+    const loggedIn = isUserLoggedIn();
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const myAccount = document.getElementById('myAccount');
+    
+    if (loginForm) loginForm.style.display = loggedIn ? 'none' : 'block';
+    if (registerForm) registerForm.style.display = 'none';
+    if (myAccount) myAccount.style.display = loggedIn ? 'block' : 'none';
+    
+    // Update active tab
+    const tabs = document.querySelectorAll('.account-tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    const loginTab = document.querySelector('.account-tab[data-tab="login"]');
+    if (loginTab) loginTab.classList.add('active');
+    
+    if (loggedIn) {
+        if (typeof renderProfile === 'function') renderProfile();
+        if (typeof renderOrders === 'function') renderOrders();
+        if (typeof renderWishlistSection === 'function') renderWishlistSection();
+        if (typeof renderAddresses === 'function') renderAddresses();
+    }
+}
+
 async function updateCurrentUserProfile(patch = {}) {
     if (!isUserLoggedIn()) return { ok: false, message: 'Please login first.' };
 
@@ -901,10 +1122,19 @@ function removeProductAsAdmin(productId) {
 }
 
 // ============================================
+// ============================================
 // INITIALIZATION
 // ============================================
+let appInitialized = false;
+
+// Export globally so pages can check if initialized
+window.appInitialized = appInitialized;
+
 document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
+    if (!window.appInitialized) {
+        window.appInitialized = true;
+        initializeApp();
+    }
 });
 
 function initializeApp() {
@@ -1443,6 +1673,7 @@ function setupEventListeners() {
     setupFilters();
     setupThemeToggle();
     setupHiddenAdminAccess();
+    setupAccountForms();
 }
 
 function handleScroll() {
@@ -1715,15 +1946,37 @@ function setupThemeToggle() {
 // RENDER FUNCTIONS
 // ============================================
 function renderProducts(productsToRender = products) {
-    const grid = document.querySelector('.products-grid, .shop-products-grid');
-    if (!grid) return;
+    // Get the grid element - try multiple ways to find it
+    let grid = document.querySelector('.shop-products-grid') || 
+               document.querySelector('.products-grid') ||
+               document.getElementById('shopProductsGrid') ||
+               document.getElementById('relatedProductsGrid');
+    
+    if (!grid) {
+        return; // Grid not on this page, that's okay
+    }
 
-    const visibleProducts = productsToRender.filter(product => !isProductHidden(product.id));
-    grid.innerHTML = visibleProducts.map(product => createProductCard(product)).join('');
+    // Filter out hidden products
+    const productsArray = Array.isArray(productsToRender) ? productsToRender : products;
+    const visibleProducts = productsArray.filter(product => {
+        return !isProductHidden(product.id);
+    });
+    
+    // Generate HTML for each product
+    const html = visibleProducts.map(product => {
+        return createProductCard(product);
+    }).join('');
+    
+    // Insert into DOM
+    grid.innerHTML = html;
+    
+    // Update results text if on shop page
     const results = document.querySelector('.shop-results');
     if (results) {
         results.textContent = `Showing ${visibleProducts.length} products`;
     }
+    
+    // Update interactive elements
     updateWishlistButtons();
     updatePrices();
 }
@@ -1746,6 +1999,7 @@ function createProductCard(product) {
                     ${showAdminRemove ? `<button class="product-action-btn" onclick="removeProductAsAdmin(${product.id})" title="Remove product" style="font-size: 0.68rem; font-weight: 700;">DEL</button>` : ''}
                 </div>
                 <div class="product-quick-view" onclick="openQuickView(${product.id})">Quick View</div>
+            </div>
             <div class="product-info">
                 <span class="product-category">${product.category}</span>
                 <h3 class="product-title"><a href="product.html?id=${product.id}">${product.name}</a></h3>
@@ -1757,6 +2011,7 @@ function createProductCard(product) {
                     ${'★'.repeat(Math.floor(product.rating))}${'☆'.repeat(5 - Math.floor(product.rating))}
                     <span>(${product.reviews})</span>
                 </div>
+            </div>
         </div>
     `;
 }
@@ -1851,6 +2106,10 @@ function getProductById(id) {
 // ============================================
 // EXPORTS
 // ============================================
+// EXPORTS
+// ============================================
+// EXPORTS
+// ============================================
 window.addToCart = addToCart;
 window.removeFromCart = removeFromCart;
 window.updateCartQuantity = updateCartQuantity;
@@ -1866,6 +2125,11 @@ window.getProductById = getProductById;
 window.formatPrice = formatPrice;
 window.translations = translations;
 window.products = products;
+window.renderProducts = renderProducts;
+window.renderCart = renderCart;
+window.renderWishlist = renderWishlist;
+window.createProductCard = createProductCard;
+window.applyFilters = applyFilters;
 window.getAdminProducts = getStoredCustomProducts;
 window.addAdminProduct = addAdminProduct;
 window.removeAdminProduct = removeAdminProduct;
@@ -1879,3 +2143,9 @@ window.getUserOrders = getUserOrders;
 window.updateCurrentUserProfile = updateCurrentUserProfile;
 window.saveOrderHistory = saveOrderHistory;
 window.runCloudDiagnostics = runCloudDiagnostics;
+window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
+window.handleLogout = handleLogout;
+window.syncAccountView = syncAccountView;
+window.showToast = showToast;
+window.initializeApp = initializeApp;

@@ -196,7 +196,10 @@
         let isReviewAdmin = false;
 
         document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
+            if (!window.appInitialized) {
+                window.appInitialized = true;
+                initializeApp();
+            }
             loadProductDetail();
         });
 

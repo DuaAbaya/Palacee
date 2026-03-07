@@ -84,7 +84,10 @@
     <script src="js/main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
+            if (!window.appInitialized) {
+                window.appInitialized = true;
+                initializeApp();
+            }
             renderCart();
         });
     </script>
