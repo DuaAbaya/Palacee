@@ -224,83 +224,21 @@
 
     <script src="js/main.js"></script>
     <script>
-        // Add diagnostic button
-        function runDiagnostics() {
-            if (typeof runCloudDiagnostics === 'function') {
-                runCloudDiagnostics();
-            } else {
-                alert('Diagnostics function not found. Please refresh the page.');
-            }
-        }
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!window.appInitialized) {
-                window.appInitialized = true;
-                initializeApp();
-            }
-            setupAccountTabs();
-            syncAccountView();
-            window.addEventListener('userStateUpdated', () => {
-                if (isUserLoggedIn()) {
-                    renderProfile();
-                    renderAddresses();
-                    renderOrders();
-                }
-            });
-        });
-
-        function setupAccountTabs() {
-            document.querySelectorAll('.account-tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    if (isUserLoggedIn()) return;
-
-                    document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-
-                    const tabId = this.dataset.tab;
-                    document.getElementById('loginForm').style.display = tabId === 'login' ? 'block' : 'none';
-                    document.getElementById('registerForm').style.display = tabId === 'register' ? 'block' : 'none';
-                    document.getElementById('myAccount').style.display = 'none';
-                });
-            });
-        }
-
-        function getActiveUser() {
-            return window.getCurrentUser ? window.getCurrentUser() : null;
-        }
-
-        function syncAccountView() {
-            const loggedIn = isUserLoggedIn();
-            document.getElementById('loginForm').style.display = loggedIn ? 'none' : 'block';
-            document.getElementById('registerForm').style.display = 'none';
-            document.getElementById('myAccount').style.display = loggedIn ? 'block' : 'none';
-
-            document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
-            document.querySelector('.account-tab[data-tab="login"]').classList.add('active');
-
-            if (loggedIn) {
-                renderProfile();
-                renderOrders();
-                renderWishlistSection();
-                renderAddresses();
-            }
-        }
-
+        // Ensure functions from main.js are available globally
         async function handleLogin(e) {
             e.preventDefault();
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
-            const result = await loginAccount(email, password);
+            const result = await window.loginAccount(email, password);
 
             if (!result.ok) {
-                showToast(result.message, 'error');
+                window.showToast(result.message, 'error');
                 return;
             }
 
             e.target.reset();
             syncAccountView();
-            showToast('Welcome back!');
+            window.showToast('Welcome back!');
         }
 
         async function handleRegister(e) {
@@ -316,29 +254,52 @@
             const confirmPassword = document.getElementById('registerConfirmPassword').value;
 
             if (payload.password.length < 6) {
-                showToast('Password must be at least 6 characters.', 'error');
+                window.showToast('Password must be at least 6 characters.', 'error');
                 return;
             }
             if (payload.password !== confirmPassword) {
-                showToast('Passwords do not match.', 'error');
+                window.showToast('Passwords do not match.', 'error');
                 return;
             }
 
-            const result = await registerAccount(payload);
+            const result = await window.registerAccount(payload);
             if (!result.ok) {
-                showToast(result.message, 'error');
+                window.showToast(result.message, 'error');
                 return;
             }
 
             e.target.reset();
             syncAccountView();
-            showToast('Account created successfully!');
+            window.showToast('Account created successfully!');
         }
 
         function handleLogout() {
-            logoutAccount();
+            window.logoutAccount();
             syncAccountView();
-            showToast('Logged out successfully');
+            window.showToast('Logged out successfully');
+        }
+
+        async function updateProfile() {
+            const fullName = document.getElementById('profileFullName').value.trim();
+            const [firstName, ...rest] = fullName.split(' ').filter(Boolean);
+            const lastName = rest.join(' ');
+            const email = document.getElementById('profileEmail').value.trim();
+            const phone = document.getElementById('profilePhone').value.trim();
+
+            const result = await window.updateCurrentUserProfile({
+                firstName: firstName || '',
+                lastName: lastName || '',
+                email,
+                phone
+            });
+
+            if (!result.ok) {
+                window.showToast(result.message, 'error');
+                return;
+            }
+
+            renderProfile();
+            window.showToast('Profile updated.');
         }
 
         function renderProfile() {
@@ -357,7 +318,7 @@
             const email = document.getElementById('profileEmail').value.trim();
             const phone = document.getElementById('profilePhone').value.trim();
 
-            const result = await updateCurrentUserProfile({
+            const result = await window.updateCurrentUserProfile({
                 firstName: firstName || '',
                 lastName: lastName || '',
                 email,
@@ -365,12 +326,12 @@
             });
 
             if (!result.ok) {
-                showToast(result.message, 'error');
+                window.showToast(result.message, 'error');
                 return;
             }
 
             renderProfile();
-            showToast('Profile updated.');
+            window.showToast('Profile updated.');
         }
 
         function renderAddresses() {
@@ -441,15 +402,15 @@
                 phone
             });
 
-            const result = await updateCurrentUserProfile({ addresses });
+            const result = await window.updateCurrentUserProfile({ addresses });
             if (!result.ok) {
-                showToast(result.message, 'error');
+                window.showToast(result.message, 'error');
                 return;
             }
 
             renderAddresses();
             cancelAddressForm();
-            showToast('Address saved.');
+            window.showToast('Address saved.');
         }
 
         async function removeAddress(index) {
@@ -460,21 +421,21 @@
             if (index < 0 || index >= addresses.length) return;
             addresses.splice(index, 1);
 
-            const result = await updateCurrentUserProfile({ addresses });
+            const result = await window.updateCurrentUserProfile({ addresses });
             if (!result.ok) {
-                showToast(result.message, 'error');
+                window.showToast(result.message, 'error');
                 return;
             }
 
             renderAddresses();
-            showToast('Address removed.');
+            window.showToast('Address removed.');
         }
 
         function renderOrders() {
             const container = document.getElementById('accountOrdersList');
             if (!container) return;
 
-            const orders = getUserOrders();
+            const orders = window.getUserOrders();
             if (!orders.length) {
                 container.innerHTML = '<p style="margin-bottom: 10px;">No orders yet</p>';
                 return;
@@ -484,7 +445,7 @@
                 <div style="border: 1px solid var(--gray-light); border-radius: var(--radius-md); padding: 12px; margin-bottom: 10px;">
                     <div><strong>${order.orderId}</strong></div>
                     <div style="font-size: 0.9rem; color: var(--gray);">${new Date(order.createdAt).toLocaleString()}</div>
-                    <div style="margin-top: 4px;">Total: ${order.displayTotal || formatPrice(order.totalUSD || 0)}</div>
+                    <div style="margin-top: 4px;">Total: ${order.displayTotal || window.formatPrice(order.totalUSD || 0)}</div>
                 </div>
             `).join('');
         }
@@ -494,7 +455,71 @@
             if (!container) return;
 
             container.classList.add('wishlist-products');
-            renderWishlist();
+            window.renderWishlist();
+        }
+    </script>
+    <script>
+        // Add diagnostic button
+        function runDiagnostics() {
+            if (typeof runCloudDiagnostics === 'function') {
+                runCloudDiagnostics();
+            } else {
+                alert('Diagnostics function not found. Please refresh the page.');
+            }
+        }
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.appInitialized) {
+                window.appInitialized = true;
+                window.initializeApp();
+            }
+            setupAccountTabs();
+            syncAccountView();
+            window.addEventListener('userStateUpdated', () => {
+                if (window.isUserLoggedIn()) {
+                    renderProfile();
+                    renderAddresses();
+                    renderOrders();
+                }
+            });
+        });
+
+        function setupAccountTabs() {
+            document.querySelectorAll('.account-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    if (window.isUserLoggedIn()) return;
+
+                    document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+
+                    const tabId = this.dataset.tab;
+                    document.getElementById('loginForm').style.display = tabId === 'login' ? 'block' : 'none';
+                    document.getElementById('registerForm').style.display = tabId === 'register' ? 'block' : 'none';
+                    document.getElementById('myAccount').style.display = 'none';
+                });
+            });
+        }
+
+        function getActiveUser() {
+            return window.getCurrentUser ? window.getCurrentUser() : null;
+        }
+
+        function syncAccountView() {
+            const loggedIn = window.isUserLoggedIn();
+            document.getElementById('loginForm').style.display = loggedIn ? 'none' : 'block';
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('myAccount').style.display = loggedIn ? 'block' : 'none';
+
+            document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector('.account-tab[data-tab="login"]').classList.add('active');
+
+            if (loggedIn) {
+                renderProfile();
+                renderOrders();
+                renderWishlistSection();
+                renderAddresses();
+            }
         }
 
     </script>
