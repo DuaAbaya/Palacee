@@ -1519,22 +1519,46 @@ async function sendOrderToFormSubmit(order, formElement) {
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
 
-    // For attachments, send multipart directly to non-AJAX FormSubmit endpoint.
-    // This is the most reliable path for file delivery in email.
+    // Upload screenshot to image hosting and embed in email
     if (screenshotFile) {
-        const formData = new FormData();
-        Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
-        formData.append('attachment', screenshotFile, screenshotFile.name || 'payment-screenshot.png');
-
-        await fetch(`https://formsubmit.co/${emailTarget}`, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: formData,
-            keepalive: true
-        });
-        return;
+        try {
+            // Convert file to base64
+            const base64Data = await fileToBase64(screenshotFile);
+            
+            // Upload to ImgBB (free image hosting)
+            const imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
+            
+            if (imageUrl) {
+                // Add image URL to payload with HTML formatting for email
+                payload.payment_screenshot_url = imageUrl;
+                payload._subject = `New Checkout Order: ${order.orderId} - Payment Screenshot Attached`;
+                
+                // Create HTML message with embedded image
+                const htmlMessage = `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #333;">New Order Received: ${order.orderId}</h2>
+                        <p><strong>Customer:</strong> ${order.customer.firstName} ${order.customer.lastName}</p>
+                        <p><strong>Email:</strong> ${order.customer.email}</p>
+                        <p><strong>Phone:</strong> ${order.customer.phone}</p>
+                        <p><strong>Total:</strong> INR ${order.total.toFixed(2)} (USD $${order.totalUSD.toFixed(2)})</p>
+                        <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+                        <hr style="border: 1px solid #eee; margin: 20px 0;">
+                        <h3 style="color: #333;">Payment Screenshot:</h3>
+                        <div style="text-align: center; margin: 20px 0;">
+                            <img src="${imageUrl}" alt="Payment Screenshot" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        </div>
+                        <p style="color: #666; font-size: 12px;">Screenshot uploaded on: ${new Date().toLocaleString()}</p>
+                    </div>
+                `;
+                payload.html_message = htmlMessage;
+            }
+        } catch (uploadError) {
+            console.error('Screenshot upload failed:', uploadError);
+            // Continue without screenshot if upload fails
+        }
     }
 
+    // Send via AJAX with JSON payload
     try {
         const ajaxResponse = await fetch(`https://formsubmit.co/ajax/${emailTarget}`, {
             method: 'POST',
@@ -1552,7 +1576,7 @@ async function sendOrderToFormSubmit(order, formElement) {
         console.warn('FormSubmit AJAX failed, using fallback POST.', error);
     }
 
-    // Fallback POST works even where CORS blocks AJAX response reading.
+    // Fallback POST
     const formBody = new URLSearchParams(payload).toString();
     await fetch(`https://formsubmit.co/${emailTarget}`, {
         method: 'POST',
@@ -1563,6 +1587,39 @@ async function sendOrderToFormSubmit(order, formElement) {
         body: formBody,
         keepalive: true
     });
+}
+
+// Helper function to convert file to base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
+
+// Upload image to ImgBB and return URL
+async function uploadToImgBB(base64Data, fileName) {
+    // ImgBB free API (no key required for basic uploads)
+    const formData = new FormData();
+    formData.append('image', base64Data);
+    
+    try {
+        const response = await fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae7f9089d85875571358', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        if (data && data.data && data.data.url) {
+            return data.data.url;
+        }
+    } catch (error) {
+        console.error('ImgBB upload error:', error);
+    }
+    
+    return null;
 }
 function createFormSubmitPayload(order) {
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
