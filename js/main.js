@@ -221,7 +221,9 @@ const TRACKING_CONFIG = {
     ga4MeasurementId: "",
     metaPixelId: "",
     orderWebhookUrl: "https://formsubmit.co/ajax/tanveerkhan.ltp786786@gmail.com",
-    adminEmail: "tanveerkhan.ltp786786@gmail.com"
+    adminEmail: "tanveerkhan.ltp786786@gmail.com",
+    sendgridApiKey: "", // Optional: Add SendGrid API key for better HTML email support with embedded images
+    sendgridFromEmail: "noreply@duaabayapalace.com" // Email address SendGrid will send from
 };
 
 const CLOUD_SYNC_CONFIG = {
@@ -1489,6 +1491,18 @@ function trackPurchase(order) {
 async function notifyOrderWebhook(order, formElement) {
     if (!TRACKING_CONFIG.orderWebhookUrl) return;
 
+    // Try SendGrid first if API key is available
+    const hasSendGrid = TRACKING_CONFIG.sendgridApiKey && TRACKING_CONFIG.sendgridApiKey.trim();
+    if (hasSendGrid) {
+        try {
+            await sendOrderViaSendGrid(order, formElement);
+            return;
+        } catch (error) {
+            console.warn('SendGrid failed, falling back to FormSubmit:', error);
+            // Fall through to FormSubmit fallback
+        }
+    }
+
     const isFormSubmit = TRACKING_CONFIG.orderWebhookUrl.includes('formsubmit.co');
     if (isFormSubmit) {
         await sendOrderToFormSubmit(order, formElement);
@@ -1513,6 +1527,166 @@ async function notifyOrderWebhook(order, formElement) {
     }
 }
 
+async function sendOrderViaSendGrid(order, formElement) {
+    const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
+    const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
+    
+    let imageUrl = null;
+    if (screenshotFile) {
+        try {
+            const base64Data = await fileToBase64(screenshotFile);
+            imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
+        } catch (error) {
+            console.error('Screenshot upload failed:', error);
+        }
+    }
+    
+    const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
+    const addressParts = [
+        order.customer.street,
+        order.customer.apartment,
+        order.customer.city,
+        order.customer.state,
+        order.customer.postalCode,
+        order.customer.country
+    ].filter(Boolean);
+
+    const itemsHtml = order.items.map((item, index) => `
+        <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">${index + 1}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.name}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.quantity}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.size}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.color}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">INR ${item.priceINR.toFixed(2)}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">INR ${(item.priceINR * item.quantity).toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    let screenshotHtml = '';
+    if (imageUrl) {
+        screenshotHtml = `
+            <div style="margin: 30px 0; text-align: center;">
+                <h3 style="color: #333; margin-bottom: 15px;">💳 Payment Screenshot</h3>
+                <img src="${imageUrl}" alt="Payment Screenshot" style="max-width: 100%; max-height: 500px; border: 2px solid #D4AF37; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <p style="color: #666; font-size: 12px; margin-top: 10px;">Image captured at: ${new Date().toLocaleString()}</p>
+            </div>
+        `;
+    }
+
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 800px; margin: 0 auto; padding: 20px; background: #f9f9f9; border-radius: 8px; }
+                .header { background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; margin: -20px -20px 20px -20px; }
+                .header h1 { margin: 0; font-size: 24px; }
+                .section { margin: 20px 0; padding: 15px; background: white; border-left: 4px solid #D4AF37; border-radius: 4px; }
+                .section h2 { margin-top: 0; color: #D4AF37; font-size: 18px; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                table th { background: #f0f0f0; padding: 10px; border: 1px solid #ddd; text-align: left; }
+                .total-row { font-weight: bold; font-size: 18px; background: #f9f9f9; }
+                .highlight { background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>✅ New Order Received!</h1>
+                    <p>Order ID: <strong>${order.orderId}</strong></p>
+                </div>
+
+                <div class="section">
+                    <h2>📋 Order Details</h2>
+                    <table>
+                        <tr><td style="width: 40%;"><strong>Order ID:</strong></td><td>${order.orderId}</td></tr>
+                        <tr><td><strong>Date:</strong></td><td>${order.createdAt}</td></tr>
+                        <tr><td><strong>Payment Method:</strong></td><td>${order.paymentMethod}</td></tr>
+                        <tr><td style="font-size: 16px; color: #D4AF37;"><strong>Total (INR):</strong></td><td style="font-size: 16px; color: #D4AF37;"><strong>₹${order.total.toFixed(2)}</strong></td></tr>
+                        <tr><td><strong>Total (USD):</strong></td><td>$${order.totalUSD.toFixed(2)}</td></tr>
+                    </table>
+                </div>
+
+                <div class="section">
+                    <h2>👤 Customer Information</h2>
+                    <table>
+                        <tr><td style="width: 40%;"><strong>Name:</strong></td><td>${customerName}</td></tr>
+                        <tr><td><strong>Email:</strong></td><td>${order.customer.email}</td></tr>
+                        <tr><td><strong>Phone:</strong></td><td>${order.customer.phone}</td></tr>
+                        <tr><td><strong>Address:</strong></td><td>${addressParts.join(', ')}</td></tr>
+                    </table>
+                </div>
+
+                <div class="section">
+                    <h2>📦 Items Ordered</h2>
+                    <table>
+                        <thead>
+                            <tr style="background: #f0f0f0;">
+                                <th style="padding: 8px; border: 1px solid #ddd;">#</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Product</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Qty</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Size</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Color</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Price</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                            <tr class="total-row" style="background: #f9f9f9;">
+                                <td colspan="6" style="padding: 10px; border: 1px solid #ddd; text-align: right;">TOTAL:</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;"><strong>INR ${order.total.toFixed(2)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                ${screenshotHtml}
+
+                <div class="section highlight">
+                    <strong>⚠️ Action Required:</strong> Please verify the payment screenshot above and confirm the order status in your admin panel.
+                </div>
+
+                <div style="text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <p>Dua Abaya Palace | Automated Order Notification System</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const sendgridPayload = {
+        personalizations: [{
+            to: [{ email: TRACKING_CONFIG.adminEmail }]
+        }],
+        from: { 
+            email: TRACKING_CONFIG.sendgridFromEmail || 'orders@duaabayapalace.com',
+            name: 'Dua Abaya Palace Orders'
+        },
+        subject: `New Order: ${order.orderId} - ${customerName}${imageUrl ? ' (Screenshot Attached)' : ''}`,
+        content: [{
+            type: 'text/html',
+            value: htmlContent
+        }]
+    };
+
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${TRACKING_CONFIG.sendgridApiKey}`
+        },
+        body: JSON.stringify(sendgridPayload)
+    });
+
+    if (!response.ok) {
+        throw new Error(`SendGrid failed with status ${response.status}`);
+    }
+}
+
 async function sendOrderToFormSubmit(order, formElement) {
     const payload = createFormSubmitPayload(order);
     const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
@@ -1529,28 +1703,11 @@ async function sendOrderToFormSubmit(order, formElement) {
             const imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
             
             if (imageUrl) {
-                // Add image URL to payload with HTML formatting for email
-                payload.payment_screenshot_url = imageUrl;
                 payload._subject = `New Checkout Order: ${order.orderId} - Payment Screenshot Attached`;
-                
-                // Create HTML message with embedded image
-                const htmlMessage = `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #333;">New Order Received: ${order.orderId}</h2>
-                        <p><strong>Customer:</strong> ${order.customer.firstName} ${order.customer.lastName}</p>
-                        <p><strong>Email:</strong> ${order.customer.email}</p>
-                        <p><strong>Phone:</strong> ${order.customer.phone}</p>
-                        <p><strong>Total:</strong> INR ${order.total.toFixed(2)} (USD $${order.totalUSD.toFixed(2)})</p>
-                        <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
-                        <hr style="border: 1px solid #eee; margin: 20px 0;">
-                        <h3 style="color: #333;">Payment Screenshot:</h3>
-                        <div style="text-align: center; margin: 20px 0;">
-                            <img src="${imageUrl}" alt="Payment Screenshot" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        </div>
-                        <p style="color: #666; font-size: 12px;">Screenshot uploaded on: ${new Date().toLocaleString()}</p>
-                    </div>
-                `;
-                payload.html_message = htmlMessage;
+                // Send image URL as a prominent field that will appear in email
+                payload['🖼️ PAYMENT SCREENSHOT IMAGE'] = imageUrl;
+                // Also include it in standard field
+                payload.payment_screenshot_url = imageUrl;
             }
         } catch (uploadError) {
             console.error('Screenshot upload failed:', uploadError);
@@ -1576,15 +1733,15 @@ async function sendOrderToFormSubmit(order, formElement) {
         console.warn('FormSubmit AJAX failed, using fallback POST.', error);
     }
 
-    // Fallback POST
-    const formBody = new URLSearchParams(payload).toString();
+    // Fallback POST - send as form data with custom field handling
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(payload)) {
+        formData.append(key, value);
+    }
+    
     await fetch(`https://formsubmit.co/${emailTarget}`, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: formBody,
+        body: formData,
         keepalive: true
     });
 }
@@ -1660,7 +1817,6 @@ function createFormSubmitPayload(order) {
         `Subtotal: INR ${order.subtotal.toFixed(2)}`,
         `Total: INR ${order.total.toFixed(2)}`,
         `Reference USD Total: $${order.totalUSD.toFixed(2)}`,
-        `Payment Screenshot: ${order.paymentScreenshotName || 'Not uploaded'}`,
         '',
         'Customer Details:',
         `Name: ${customerName}`,
