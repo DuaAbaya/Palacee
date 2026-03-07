@@ -923,6 +923,52 @@ function getStoredCustomProducts() {
     }
 }
 
+// Cloud sync for custom products (admin products)
+async function saveCustomProductsToCloud(customProducts) {
+    if (!isCloudSyncEnabled()) return;
+    try {
+        await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
+    } catch (error) {
+        console.warn('Cloud custom products sync failed:', error.message);
+    }
+}
+
+async function loadCustomProductsFromCloud() {
+    if (!isCloudSyncEnabled()) return null;
+    try {
+        return await firebaseDbRequest('/adminProducts', 'GET');
+    } catch (error) {
+        console.warn('Cloud custom products load failed:', error.message);
+        return null;
+    }
+}
+
+async function syncCustomProductsFromCloud() {
+    if (!isCloudSyncEnabled()) return;
+    try {
+        const cloudProducts = await loadCustomProductsFromCloud();
+        if (cloudProducts && Array.isArray(cloudProducts)) {
+            const localProducts = getStoredCustomProducts();
+            // Merge: add cloud products that don't exist locally
+            cloudProducts.forEach(cp => {
+                if (!localProducts.find(lp => Number(lp.id) === Number(cp.id))) {
+                    localProducts.push(cp);
+                }
+            });
+            // Save merged products locally
+            saveStoredCustomProducts(localProducts);
+            // Also add to the products array
+            localProducts.forEach(product => {
+                if (!products.find(p => Number(p.id) === Number(product.id))) {
+                    products.push(product);
+                }
+            });
+        }
+    } catch (error) {
+        console.warn('Custom products cloud sync error:', error.message);
+    }
+}
+
 function saveStoredCustomProducts(customProducts) {
     localStorage.setItem(CUSTOM_PRODUCTS_KEY, JSON.stringify(customProducts));
 }
@@ -944,6 +990,8 @@ function addAdminProduct(rawProduct) {
     customProducts.unshift(newProduct);
     saveStoredCustomProducts(customProducts);
     products.push(newProduct);
+    // Sync to cloud for cross-device support
+    saveCustomProductsToCloud(customProducts);
     return newProduct;
 }
 
@@ -955,6 +1003,8 @@ function removeAdminProduct(productId) {
     saveStoredCustomProducts(nextCustom);
     const index = products.findIndex(product => Number(product.id) === targetId && product.isCustom);
     if (index !== -1) products.splice(index, 1);
+    // Sync to cloud for cross-device support
+    saveCustomProductsToCloud(nextCustom);
     return true;
 }
 
@@ -1013,6 +1063,8 @@ function initializeApp() {
     setupEventListeners();
     showWelcomePopup();
     syncStateFromCloud();
+    // Sync custom products from cloud for cross-device support
+    syncCustomProductsFromCloud();
 }
 
 // ============================================
