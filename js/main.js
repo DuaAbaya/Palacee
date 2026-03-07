@@ -1328,17 +1328,12 @@ function createFormSubmitPayload(order, screenshotUrl = null, base64Image = null
 <p><strong>Phone:</strong> ${order.customer.phone || 'N/A'}</p>
 <p><strong>Address:</strong> ${fullAddress || 'N/A'}</p>`;
     
-    // Add screenshot - DIRECTLY EMBEDDED AS BASE64
-    if (base64Image) {
-        message += `
+    // Add screenshot - DON'T use base64, just use URL
+if (screenshotUrl) {
+    message += `
 <h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Payment Screenshot:</h3>
-<p><img src="${base64Image}" alt="Payment Screenshot" style="max-width: 400px; border: 2px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></p>
-<p><a href="${screenshotUrl}" style="color: #1976D2;">View Full Size Image</a></p>`;
-    } else if (screenshotUrl) {
-        message += `
-<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Payment Screenshot:</h3>
-<p><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width: 400px; border: 2px solid #ddd; border-radius: 8px;"></p>`;
-    }
+<p><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width: 400px; border: 2px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></p>`;
+}
 
     message += `
 <p style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
