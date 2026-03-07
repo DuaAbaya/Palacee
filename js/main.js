@@ -1260,17 +1260,21 @@ async function sendOrderToFormSubmit(order, formElement) {
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
     
     let imageUrl = null;
+    let base64Image = null;
+    
     if (screenshotFile) {
         try {
-            const base64Data = await fileToBase64(screenshotFile);
-            imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
+            // Get base64 directly for inline embedding
+            base64Image = await fileToBase64(screenshotFile);
+            // Also upload to ImgBB for backup link
+            imageUrl = await uploadToImgBB(base64Image, screenshotFile.name);
         } catch (uploadError) {
             console.error('Screenshot upload failed:', uploadError);
         }
     }
 
-    // Now create payload with screenshot URL
-    const payload = createFormSubmitPayload(order, imageUrl);
+    // Now create payload with screenshot URL - ALWAYS USE HTML TEMPLATE
+    const payload = createFormSubmitPayload(order, imageUrl, base64Image);
     const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
 
     try {
@@ -1293,7 +1297,7 @@ async function sendOrderToFormSubmit(order, formElement) {
     });
 }
 
-function createFormSubmitPayload(order, screenshotUrl = null) {
+function createFormSubmitPayload(order, screenshotUrl = null, base64Image = null) {
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
     const addressParts = [
         order.customer.street, order.customer.apartment, order.customer.city,
@@ -1305,15 +1309,43 @@ function createFormSubmitPayload(order, screenshotUrl = null) {
         `${index + 1}. ${item.name} | Qty: ${item.quantity} | Size: ${item.size} | Color: ${item.color} | INR ${(item.priceINR * item.quantity).toFixed(2)}`
     ).join('<br>');
 
-    // Build HTML message with embedded screenshot image
-    let message = `<b>Order:</b> ${order.orderId}<br><b>Total:</b> INR ${order.total}<br><b>Items:</b><br>${itemLines}<br><b>Customer Address:</b><br>${fullAddress}`;
+    // Build HTML message with embedded screenshot image - DIRECT BASE64 INLINE
+    let message = `<html><body style="font-family: Arial, sans-serif; padding: 20px;">
+<p style="background: #4CAF50; color: white; padding: 10px; border-radius: 5px;"><strong>New Order Received!</strong></p>
+
+<p><strong>Order ID:</strong> ${order.orderId}</p>
+<p><strong>Total Amount:</strong> <span style="color: #d32f2f; font-size: 18px;">INR ${order.total}</span></p>
+
+<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Order Items:</h3>
+<p>${itemLines}</p>
+
+<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Customer Details:</h3>
+<p><strong>Name:</strong> ${customerName || 'N/A'}</p>
+<p><strong>Email:</strong> ${order.customer.email || 'N/A'}</p>
+<p><strong>Phone:</strong> ${order.customer.phone || 'N/A'}</p>
+<p><strong>Address:</strong> ${fullAddress || 'N/A'}</p>`;
     
-    if (screenshotUrl) {
-        message += `<br><b>Payment Screenshot:</b><br><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width:300px; border:1px solid #ccc;">`;
+    // Add screenshot - DIRECTLY EMBEDDED AS BASE64
+    if (base64Image) {
+        message += `
+<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Payment Screenshot:</h3>
+<p><img src="${base64Image}" alt="Payment Screenshot" style="max-width: 400px; border: 2px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></p>
+<p><a href="${screenshotUrl}" style="color: #1976D2;">View Full Size Image</a></p>`;
+    } else if (screenshotUrl) {
+        message += `
+<h3 style="border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">Payment Screenshot:</h3>
+<p><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width: 400px; border: 2px solid #ddd; border-radius: 8px;"></p>`;
     }
 
+    message += `
+<p style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+<strong>Source:</strong> ${window.location.href}<br>
+<strong>Date:</strong> ${new Date().toLocaleString()}
+</p>
+</body></html>`;
+
     return {
-        _subject: screenshotUrl ? `New Order: ${order.orderId} - Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
+        _subject: screenshotUrl ? `New Order: ${order.orderId} - PAID` : `New Order: ${order.orderId}`,
         name: customerName || 'Website Customer',
         email: TRACKING_CONFIG.adminEmail,
         _replyto: order.customer.email || TRACKING_CONFIG.adminEmail,
@@ -1328,12 +1360,12 @@ function createFormSubmitPayload(order, screenshotUrl = null) {
         state: order.customer.state || '',
         postal_code: order.customer.postalCode || '',
         country: order.customer.country || '',
-        order_details: itemLines.replace(/<br>/g, '\n'),
         message: message,
         _captcha: 'false',
         _template: 'html'
     };
 }
+
 
 function saveRecentOrder(order) {
     localStorage.setItem(getScopedKey('lastOrder'), JSON.stringify(order));
