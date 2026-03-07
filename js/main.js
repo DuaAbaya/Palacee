@@ -26,11 +26,14 @@ const products = [
         fabric: "Premium Nidha",
         badge: "new"
     },
-       
+{}
+
+]
+
 // ============================================
 // TRANSLATIONS
 // ============================================
-const translations = {
+const ranslations = {
     en: {
         home: "Home", shop: "Shop", about: "About", contact: "Contact",
         cart: "Cart", account: "Account", search: "Search", login: "Login",
@@ -916,7 +919,10 @@ function removeAdminProduct(productId) {
 
 function removeAllAdminProducts() {
     const customProducts = getStoredCustomProducts();
-    if (customProducts.length === 0) return false;
+    if (customProducts.length === 0) {
+        showToast('No custom products to remove.');
+        return false;
+    }
     
     // Remove all custom products from localStorage
     saveStoredCustomProducts([]);
@@ -927,6 +933,13 @@ function removeAllAdminProducts() {
     
     // Sync to cloud
     saveCustomProductsToCloud([]);
+    
+    // Refresh the display
+    renderProducts();
+    if (typeof renderWishlist === 'function') renderWishlist();
+    if (typeof renderCart === 'function') renderCart();
+    
+    showToast('All custom products removed.');
     return true;
 }
 
