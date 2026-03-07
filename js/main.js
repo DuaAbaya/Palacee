@@ -1125,6 +1125,19 @@ function createCheckoutOrder(formElement) {
     const subtotalUSD = getCartTotal();
     const subtotalINR = convertPriceToCurrency(subtotalUSD, 'INR');
 
+    // Get all form values
+    const firstName = formElement.querySelector('[name="firstName"]')?.value?.trim() || '';
+    const lastName = formElement.querySelector('[name="lastName"]')?.value?.trim() || '';
+    const email = formElement.querySelector('[name="email"]')?.value?.trim() || '';
+    const phone = formElement.querySelector('[name="phone"]')?.value?.trim() || '';
+    const street = formElement.querySelector('[name="street"]')?.value?.trim() || '';
+    const apartment = formElement.querySelector('[name="apartment"]')?.value?.trim() || '';
+    const city = formElement.querySelector('[name="city"]')?.value?.trim() || '';
+    const state = formElement.querySelector('[name="state"]')?.value?.trim() || '';
+    const postalCode = formElement.querySelector('[name="postalCode"]')?.value?.trim() || '';
+    const countrySelect = formElement.querySelector('[name="country"]');
+    const country = countrySelect ? countrySelect.options[countrySelect.selectedIndex]?.text?.trim() || '' : '';
+
     const items = cart.map(item => ({
         id: item.id, name: item.name, priceUSD: item.price,
         priceINR: convertPriceToCurrency(item.price, 'INR'),
@@ -1144,16 +1157,16 @@ function createCheckoutOrder(formElement) {
         paymentMethod: selectedPayment ? selectedPayment.value : 'card',
         account: currentUser ? { id: currentUser.id, email: currentUser.email } : null,
         customer: {
-            firstName: getCheckoutFormValue(formElement, '[name="firstName"]') || currentUser?.firstName || getCheckoutFormValue(formElement, 'input[placeholder="Enter first name"]'),
-            lastName: getCheckoutFormValue(formElement, '[name="lastName"]') || currentUser?.lastName || getCheckoutFormValue(formElement, 'input[placeholder="Enter last name"]'),
-            email: getCheckoutFormValue(formElement, '[name="email"]') || currentUser?.email || getCheckoutFormValue(formElement, 'input[type="email"]'),
-            phone: getCheckoutFormValue(formElement, '[name="phone"]') || currentUser?.phone || getCheckoutFormValue(formElement, 'input[type="tel"]'),
-            street: getCheckoutFormValue(formElement, '[name="street"]') || getCheckoutFormValue(formElement, 'input[placeholder="Enter street address"]'),
-            apartment: getCheckoutFormValue(formElement, '[name="apartment"]'),
-            city: getCheckoutFormValue(formElement, '[name="city"]'),
-            state: getCheckoutFormValue(formElement, '[name="state"]'),
-            postalCode: getCheckoutFormValue(formElement, '[name="postalCode"]'),
-            country: getCheckoutFormValue(formElement, '[name="country"]')
+            firstName: firstName || currentUser?.firstName || '',
+            lastName: lastName || currentUser?.lastName || '',
+            email: email || currentUser?.email || '',
+            phone: phone || currentUser?.phone || '',
+            street: street,
+            apartment: apartment,
+            city: city,
+            state: state,
+            postalCode: postalCode,
+            country: country
         },
         items: items,
         source: { page: window.location.href, userAgent: navigator.userAgent }
