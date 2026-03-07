@@ -25,8 +25,8 @@ const products = [
         reviews: 32,
         fabric: "Premium Nidha",
         badge: "new"
-    },
-{}
+        },
+        
 
 ]
 
