@@ -1264,37 +1264,38 @@ async function sendOrderToFormSubmit(order, formElement) {
     
     if (screenshotFile) {
         try {
-            // Get base64 directly for inline embedding
             base64Image = await fileToBase64(screenshotFile);
-            // Also upload to ImgBB for backup link
             imageUrl = await uploadToImgBB(base64Image, screenshotFile.name);
         } catch (uploadError) {
             console.error('Screenshot upload failed:', uploadError);
         }
     }
 
-    // Now create payload with screenshot URL - ALWAYS USE HTML TEMPLATE
     const payload = createFormSubmitPayload(order, imageUrl, base64Image);
-    const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
+    const emailTarget = TRACKING_CONFIG.adminEmail;
 
-    try {
-        const ajaxResponse = await fetch(`https://formsubmit.co/ajax/${emailTarget}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (ajaxResponse.ok) return;
-    } catch (error) {
-        console.warn('FormSubmit AJAX failed, using fallback POST.', error);
-    }
+    // Use direct form submission instead of fetch (more reliable)
+    const form = document.createElement('form');
+    form.action = `https://formsubmit.co/${emailTarget}`;
+    form.method = 'POST';
+    form.style.display = 'none';
 
-    const formData = new FormData();
+    // Add all fields
     for (const [key, value] of Object.entries(payload)) {
-        formData.append(key, value);
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
     }
-    await fetch(`https://formsubmit.co/${emailTarget}`, {
-        method: 'POST', body: formData, keepalive: true
-    });
+
+    document.body.appendChild(form);
+    
+    try {
+        form.submit();
+    } catch (error) {
+        console.error('Form submit failed:', error);
+    }
 }
 
 function createFormSubmitPayload(order, screenshotUrl = null, base64Image = null) {
