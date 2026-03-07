@@ -223,7 +223,10 @@ const TRACKING_CONFIG = {
     orderWebhookUrl: "https://formsubmit.co/ajax/tanveerkhan.ltp786786@gmail.com",
     adminEmail: "tanveerkhan.ltp786786@gmail.com",
     sendgridApiKey: "", // Optional: Add SendGrid API key for better HTML email support with embedded images
-    sendgridFromEmail: "noreply@duaabayapalace.com" // Email address SendGrid will send from
+    sendgridFromEmail: "noreply@duaabayapalace.com", // Email address SendGrid will send from
+    brevoApiKey: "", // Optional: Brevo (Sendinblue) API key for free HTML email with embedded images
+    brevoFromEmail: "noreply@duaabayapalace.com",
+    brevoFromName: "Dua Abaya Palace Orders"
 };
 
 const CLOUD_SYNC_CONFIG = {
@@ -1491,7 +1494,18 @@ function trackPurchase(order) {
 async function notifyOrderWebhook(order, formElement) {
     if (!TRACKING_CONFIG.orderWebhookUrl) return;
 
-    // Try SendGrid first if API key is available
+    // Try Brevo first if API key is available (free HTML email support)
+    const hasBrevo = TRACKING_CONFIG.brevoApiKey && TRACKING_CONFIG.brevoApiKey.trim();
+    if (hasBrevo) {
+        try {
+            await sendOrderViaBrevo(order, formElement);
+            return;
+        } catch (error) {
+            console.warn('Brevo failed, trying SendGrid:', error);
+        }
+    }
+
+    // Try SendGrid if API key is available
     const hasSendGrid = TRACKING_CONFIG.sendgridApiKey && TRACKING_CONFIG.sendgridApiKey.trim();
     if (hasSendGrid) {
         try {
@@ -1527,7 +1541,167 @@ async function notifyOrderWebhook(order, formElement) {
     }
 }
 
-async function sendOrderViaSendGrid(order, formElement) {
+async function sendOrderViaBrevo(order, formElement) {
+    const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
+    const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
+    
+    let imageUrl = null;
+    if (screenshotFile) {
+        try {
+            const base64Data = await fileToBase64(screenshotFile);
+            imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
+        } catch (error) {
+            console.error('Screenshot upload failed:', error);
+        }
+    }
+    
+    const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
+    const addressParts = [
+        order.customer.street,
+        order.customer.apartment,
+        order.customer.city,
+        order.customer.state,
+        order.customer.postalCode,
+        order.customer.country
+    ].filter(Boolean);
+
+    const itemsHtml = order.items.map((item, index) => `
+        <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">${index + 1}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.name}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.quantity}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.size}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.color}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">INR ${item.priceINR.toFixed(2)}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">INR ${(item.priceINR * item.quantity).toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    let screenshotHtml = '';
+    if (imageUrl) {
+        screenshotHtml = `
+            <div style="margin: 30px 0; text-align: center;">
+                <h3 style="color: #333; margin-bottom: 15px;">💳 Payment Screenshot</h3>
+                <a href="${imageUrl}" target="_blank" style="display: inline-block; margin-bottom: 10px;">
+                    <img src="${imageUrl}" alt="Payment Screenshot" style="max-width: 100%; max-height: 500px; border: 2px solid #D4AF37; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;">
+                </a>
+                <p style="color: #666; font-size: 12px; margin-top: 10px;"><a href="${imageUrl}" target="_blank" style="color: #D4AF37; text-decoration: underline;">View full-size image</a></p>
+                <p style="color: #666; font-size: 12px;">Image captured at: ${new Date().toLocaleString()}</p>
+            </div>
+        `;
+    }
+
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 800px; margin: 0 auto; padding: 20px; background: #f9f9f9; border-radius: 8px; }
+                .header { background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; margin: -20px -20px 20px -20px; }
+                .header h1 { margin: 0; font-size: 24px; }
+                .section { margin: 20px 0; padding: 15px; background: white; border-left: 4px solid #D4AF37; border-radius: 4px; }
+                .section h2 { margin-top: 0; color: #D4AF37; font-size: 18px; }
+                table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                table th { background: #f0f0f0; padding: 10px; border: 1px solid #ddd; text-align: left; }
+                .total-row { font-weight: bold; font-size: 18px; background: #f9f9f9; }
+                .highlight { background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>✅ New Order Received!</h1>
+                    <p>Order ID: <strong>${order.orderId}</strong></p>
+                </div>
+
+                <div class="section">
+                    <h2>📋 Order Details</h2>
+                    <table>
+                        <tr><td style="width: 40%;"><strong>Order ID:</strong></td><td>${order.orderId}</td></tr>
+                        <tr><td><strong>Date:</strong></td><td>${order.createdAt}</td></tr>
+                        <tr><td><strong>Payment Method:</strong></td><td>${order.paymentMethod}</td></tr>
+                        <tr><td style="font-size: 16px; color: #D4AF37;"><strong>Total (INR):</strong></td><td style="font-size: 16px; color: #D4AF37;"><strong>₹${order.total.toFixed(2)}</strong></td></tr>
+                        <tr><td><strong>Total (USD):</strong></td><td>$${order.totalUSD.toFixed(2)}</td></tr>
+                    </table>
+                </div>
+
+                <div class="section">
+                    <h2>👤 Customer Information</h2>
+                    <table>
+                        <tr><td style="width: 40%;"><strong>Name:</strong></td><td>${customerName}</td></tr>
+                        <tr><td><strong>Email:</strong></td><td>${order.customer.email}</td></tr>
+                        <tr><td><strong>Phone:</strong></td><td>${order.customer.phone}</td></tr>
+                        <tr><td><strong>Address:</strong></td><td>${addressParts.join(', ')}</td></tr>
+                    </table>
+                </div>
+
+                <div class="section">
+                    <h2>📦 Items Ordered</h2>
+                    <table>
+                        <thead>
+                            <tr style="background: #f0f0f0;">
+                                <th style="padding: 8px; border: 1px solid #ddd;">#</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Product</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Qty</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Size</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Color</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Price</th>
+                                <th style="padding: 8px; border: 1px solid #ddd;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                            <tr class="total-row" style="background: #f9f9f9;">
+                                <td colspan="6" style="padding: 10px; border: 1px solid #ddd; text-align: right;">TOTAL:</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;"><strong>INR ${order.total.toFixed(2)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                ${screenshotHtml}
+
+                <div class="section highlight">
+                    <strong>⚠️ Action Required:</strong> Please verify the payment screenshot above and confirm the order status in your admin panel.
+                </div>
+
+                <div style="text-align: center; color: #888; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <p>Dua Abaya Palace | Automated Order Notification System</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const brevoPayload = {
+        sender: { 
+            name: TRACKING_CONFIG.brevoFromName || 'Dua Abaya Palace',
+            email: TRACKING_CONFIG.brevoFromEmail || 'noreply@duaabayapalace.com'
+        },
+        to: [{
+            email: TRACKING_CONFIG.adminEmail,
+            name: 'Admin'
+        }],
+        subject: `New Order: ${order.orderId} - ${customerName}${imageUrl ? ' (Screenshot Attached)' : ''}`,
+        htmlContent: htmlContent
+    };
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'api-key': TRACKING_CONFIG.brevoApiKey
+        },
+        body: JSON.stringify(brevoPayload)
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Brevo failed with status ${response.status}: ${errorText}`);
+    }
+}
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
     
