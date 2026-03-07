@@ -1255,10 +1255,7 @@ async function uploadToImgBB(base64Data, fileName) {
 }
 
 async function sendOrderToFormSubmit(order, formElement) {
-    const payload = createFormSubmitPayload(order);
-    const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
-
-    // Handle payment screenshot upload
+    // Handle payment screenshot upload first
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
     
@@ -1267,17 +1264,14 @@ async function sendOrderToFormSubmit(order, formElement) {
         try {
             const base64Data = await fileToBase64(screenshotFile);
             imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
-            if (imageUrl) {
-                // Add screenshot URL to payload
-                payload.payment_screenshot = imageUrl;
-                payload.screenshot_link = imageUrl;
-                // Update subject to indicate screenshot attached
-                payload._subject = `New Checkout Order: ${order.orderId} - Payment Screenshot Attached`;
-            }
         } catch (uploadError) {
             console.error('Screenshot upload failed:', uploadError);
         }
     }
+
+    // Now create payload with screenshot URL
+    const payload = createFormSubmitPayload(order, imageUrl);
+    const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
 
     try {
         const ajaxResponse = await fetch(`https://formsubmit.co/ajax/${emailTarget}`, {
@@ -1299,7 +1293,7 @@ async function sendOrderToFormSubmit(order, formElement) {
     });
 }
 
-function createFormSubmitPayload(order) {
+function createFormSubmitPayload(order, screenshotUrl = null) {
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
     const addressParts = [
         order.customer.street, order.customer.apartment, order.customer.city,
@@ -1311,8 +1305,15 @@ function createFormSubmitPayload(order) {
         `${index + 1}. ${item.name} | Qty: ${item.quantity} | Size: ${item.size} | Color: ${item.color} | INR ${(item.priceINR * item.quantity).toFixed(2)}`
     ).join('\n');
 
+    // Build message with screenshot image if available
+    let message = `Order: ${order.orderId}\nTotal: INR ${order.total}\nItems:\n${itemLines}\n\nCustomer Address:\n${fullAddress}`;
+    
+    if (screenshotUrl) {
+        message += `\n\nPayment Screenshot: ${screenshotUrl}`;
+    }
+
     return {
-        _subject: `New Checkout Order: ${order.orderId}`,
+        _subject: screenshotUrl ? `New Checkout Order: ${order.orderId} - Payment Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
         name: customerName || 'Website Customer',
         email: TRACKING_CONFIG.adminEmail,
         _replyto: order.customer.email || TRACKING_CONFIG.adminEmail,
@@ -1320,7 +1321,7 @@ function createFormSubmitPayload(order) {
         order_id: order.orderId,
         payment_method: order.paymentMethod,
         order_total_inr: String(order.total),
-        // Address fields - ADDED
+        // Address fields
         address: fullAddress,
         street: order.customer.street || '',
         apartment: order.customer.apartment || '',
@@ -1328,9 +1329,11 @@ function createFormSubmitPayload(order) {
         state: order.customer.state || '',
         postal_code: order.customer.postalCode || '',
         country: order.customer.country || '',
+        // Screenshot
+        payment_screenshot: screenshotUrl || '',
         // Order details
         order_details: itemLines,
-        message: `Order: ${order.orderId}\nTotal: INR ${order.total}\nItems:\n${itemLines}\n\nCustomer Address:\n${fullAddress}`,
+        message: message,
         _captcha: 'false',
         _template: 'table'
     };
