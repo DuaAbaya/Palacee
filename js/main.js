@@ -1341,18 +1341,24 @@ function removeProductAsAdmin(productId) {
 }
 
 function initializeApp() {
-    loadCustomProducts();
-    migrateLegacyGuestData();
-    hydrateUserState();
-    initializeTrackingScripts();
-    loadTheme();
-    loadLanguage();
-    updateCartCount();
-    updateWishlistCount();
-    syncAdminModeClass();
-    setupEventListeners();
-    showWelcomePopup();
-    syncStateFromCloud();
+    try {
+        loadCustomProducts();
+        migrateLegacyGuestData();
+        hydrateUserState();
+        initializeTrackingScripts();
+        loadTheme();
+        loadLanguage();
+        updateCartCount();
+        updateWishlistCount();
+        syncAdminModeClass();
+        setupEventListeners();
+        showWelcomePopup();
+        syncStateFromCloud();
+        console.log('[Init] App initialized successfully with', products.length, 'products');
+    } catch (error) {
+        console.error('[Init Error]', error);
+        // Don't throw - let app continue with degraded functionality
+    }
 }
 
 // ============================================
@@ -1649,16 +1655,20 @@ function trackPurchase(order) {
 }
 
 async function notifyOrderWebhook(order, formElement) {
-    if (!TRACKING_CONFIG.orderWebhookUrl) return;
+    if (!TRACKING_CONFIG.orderWebhookUrl) {
+        console.log('[Order] No webhook URL configured, skipping email notification');
+        return;
+    }
 
     // Try Brevo first if API key is available (free HTML email support)
     const hasBrevo = TRACKING_CONFIG.brevoApiKey && TRACKING_CONFIG.brevoApiKey.trim();
     if (hasBrevo) {
         try {
             await sendOrderViaBrevo(order, formElement);
+            console.log('[Order] Email sent successfully via Brevo');
             return;
         } catch (error) {
-            console.warn('Brevo failed, trying SendGrid:', error);
+            console.warn('[Order] Brevo failed:', error.message);
         }
     }
 
@@ -1667,38 +1677,55 @@ async function notifyOrderWebhook(order, formElement) {
     if (hasSendGrid) {
         try {
             await sendOrderViaSendGrid(order, formElement);
+            console.log('[Order] Email sent successfully via SendGrid');
             return;
         } catch (error) {
-            console.warn('SendGrid failed, falling back to FormSubmit:', error);
-            // Fall through to FormSubmit fallback
+            console.warn('[Order] SendGrid failed:', error.message);
         }
     }
 
     const isFormSubmit = TRACKING_CONFIG.orderWebhookUrl.includes('formsubmit.co');
     if (isFormSubmit) {
-        await sendOrderToFormSubmit(order, formElement);
-        return;
+        try {
+            await sendOrderToFormSubmit(order, formElement);
+            console.log('[Order] Email sent successfully via FormSubmit');
+            return;
+        } catch (error) {
+            console.warn('[Order] FormSubmit failed:', error.message);
+        }
     }
 
-    const payload = {
-        ...order,
-        adminEmail: TRACKING_CONFIG.adminEmail || null
-    };
+    // Try generic webhook as last resort
+    try {
+        const payload = {
+            ...order,
+            adminEmail: TRACKING_CONFIG.adminEmail || null
+        };
 
-    const response = await fetch(TRACKING_CONFIG.orderWebhookUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-    });
+        const response = await fetch(TRACKING_CONFIG.orderWebhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
 
-    if (!response.ok) {
-        throw new Error(`Webhook failed with status ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`Webhook failed with status ${response.status}`);
+        }
+        console.log('[Order] Email sent successfully via webhook');
+    } catch (error) {
+        console.warn('[Order] Webhook notification failed:', error.message);
+        // Don't throw - order is already saved locally
     }
 }
 
 async function sendOrderViaBrevo(order, formElement) {
+    // Skip Brevo if API key is not set or empty
+    if (!TRACKING_CONFIG.brevoApiKey || !TRACKING_CONFIG.brevoApiKey.trim()) {
+        throw new Error('Brevo API key not configured');
+    }
+
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
     
@@ -2645,17 +2672,31 @@ function setupThemeToggle() {
 // RENDER FUNCTIONS
 // ============================================
 function renderProducts(productsToRender = products) {
-    const grid = document.querySelector('.products-grid, .shop-products-grid');
-    if (!grid) return;
+    try {
+        const grid = document.querySelector('.products-grid, .shop-products-grid');
+        if (!grid) {
+            console.warn('[Render] No grid found for products');
+            return;
+        }
 
-    const visibleProducts = productsToRender.filter(product => !isProductHidden(product.id));
-    grid.innerHTML = visibleProducts.map(product => createProductCard(product)).join('');
-    const results = document.querySelector('.shop-results');
-    if (results) {
-        results.textContent = `Showing ${visibleProducts.length} products`;
+        const visibleProducts = productsToRender.filter(product => !isProductHidden(product.id));
+        console.log('[Render] Rendering', visibleProducts.length, 'products');
+        
+        grid.innerHTML = visibleProducts.map(product => createProductCard(product)).join('');
+        
+        const results = document.querySelector('.shop-results');
+        if (results) {
+            results.textContent = `Showing ${visibleProducts.length} products`;
+        }
+        updateWishlistButtons();
+        updatePrices();
+    } catch (error) {
+        console.error('[Render Error]', error);
+        const grid = document.querySelector('.products-grid, .shop-products-grid');
+        if (grid) {
+            grid.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">Error loading products. Please refresh the page.</div>';
+        }
     }
-    updateWishlistButtons();
-    updatePrices();
 }
 
 function createProductCard(product) {
