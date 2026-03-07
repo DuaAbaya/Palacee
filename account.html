@@ -224,6 +224,16 @@
 
     <script src="js/main.js"></script>
     <script>
+        // Add diagnostic button
+        function runDiagnostics() {
+            if (typeof runCloudDiagnostics === 'function') {
+                runCloudDiagnostics();
+            } else {
+                alert('Diagnostics function not found. Please refresh the page.');
+            }
+        }
+    </script>
+    <script>
         document.addEventListener('DOMContentLoaded', () => {
             initializeApp();
             setupAccountTabs();
