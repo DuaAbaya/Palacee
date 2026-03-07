@@ -1305,15 +1305,15 @@ function createFormSubmitPayload(order, screenshotUrl = null) {
         `${index + 1}. ${item.name} | Qty: ${item.quantity} | Size: ${item.size} | Color: ${item.color} | INR ${(item.priceINR * item.quantity).toFixed(2)}`
     ).join('\n');
 
-    // Build message with screenshot image if available
+    // Build message with screenshot - make it very prominent
     let message = `Order: ${order.orderId}\nTotal: INR ${order.total}\nItems:\n${itemLines}\n\nCustomer Address:\n${fullAddress}`;
     
     if (screenshotUrl) {
-        message += `\n\nPayment Screenshot: ${screenshotUrl}`;
+        message += `\n\n===== PAYMENT SCREENSHOT =====\nView Screenshot: ${screenshotUrl}\n==============================`;
     }
 
     return {
-        _subject: screenshotUrl ? `New Checkout Order: ${order.orderId} - Payment Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
+        _subject: screenshotUrl ? `New Order: ${order.orderId} - Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
         name: customerName || 'Website Customer',
         email: TRACKING_CONFIG.adminEmail,
         _replyto: order.customer.email || TRACKING_CONFIG.adminEmail,
@@ -1329,8 +1329,10 @@ function createFormSubmitPayload(order, screenshotUrl = null) {
         state: order.customer.state || '',
         postal_code: order.customer.postalCode || '',
         country: order.customer.country || '',
-        // Screenshot
-        payment_screenshot: screenshotUrl || '',
+        // Screenshot - add as multiple fields for visibility
+        payment_screenshot: screenshotUrl ? `YES - ${screenshotUrl}` : 'NO',
+        screenshot_url: screenshotUrl || 'Not uploaded',
+        screenshot_link: screenshotUrl || '',
         // Order details
         order_details: itemLines,
         message: message,
