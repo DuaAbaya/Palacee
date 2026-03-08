@@ -197,7 +197,14 @@
                 const nextBtn = document.getElementById('homeProductsNext');
                 if (!track || !window.products || !window.products.length) return;
                 
-                const featuredItems = window.products.slice(0, 10);
+                // Filter out hidden products - IMPORTANT for persistence after deletion
+                const allAvailableProducts = window.isProductHidden 
+                    ? window.products.filter(p => !window.isProductHidden(p.id))
+                    : window.products;
+                
+                console.log('Initial load - Total products:', window.products.length, 'Available:', allAvailableProducts.length);
+                
+                const featuredItems = allAvailableProducts.slice(0, 10);
                 track.innerHTML = featuredItems.map(product => createFeaturedProductCard(product)).join('');
                 
                 // Update prices

@@ -930,8 +930,17 @@ function saveStoredCustomProducts(customProducts) {
 function loadCustomProducts() {
     if (customProductsLoaded) return;
     const customProducts = getStoredCustomProducts();
+    const hiddenIds = getHiddenProductIds ? getHiddenProductIds() : [];
+    
     customProducts.forEach(product => {
-        if (!products.find(p => Number(p.id) === Number(product.id))) {
+        const productId = Number(product.id);
+        // Don't load products that are marked as hidden
+        if (hiddenIds.includes(productId)) {
+            console.log('Skipping hidden custom product on load:', productId);
+            return;
+        }
+        
+        if (!products.find(p => Number(p.id) === productId)) {
             products.push(product);
         }
     });
