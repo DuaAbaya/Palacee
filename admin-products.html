@@ -144,6 +144,12 @@
                             <label for="adminColors">Colors (comma)</label>
                             <input id="adminColors" type="text" value="Black">
                         </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="adminIsFeatured">
+                                <span>Mark as Featured (shows in slider)</span>
+                            </label>
+                        </div>
                         <div class="form-group full">
                             <button type="submit" class="btn btn-primary">Add Product</button>
                             <p class="admin-note">Only admin panel se add kiye products remove kiye ja sakte hain.</p>
@@ -251,6 +257,7 @@
                     images: [mainImage, ...galleryImages],
                     sizes: parseCsv(document.getElementById('adminSizes').value, ['S', 'M', 'L', 'XL']),
                     colors: parseCsv(document.getElementById('adminColors').value, ['Black']),
+                    isFeatured: document.getElementById('adminIsFeatured').checked,
                     rating: 5,
                     reviews: 0,
                     fabric: 'Premium Nidha',
@@ -263,6 +270,7 @@
                 document.getElementById('adminCategory').value = 'Closed Abaya';
                 document.getElementById('adminSizes').value = 'S,M,L,XL';
                 document.getElementById('adminColors').value = 'Black';
+                document.getElementById('adminIsFeatured').checked = false;
                 renderAdminProducts();
             });
         }
@@ -282,7 +290,9 @@
                     <img src="${product.image}" alt="${product.name}">
                     <div>
                         <strong>${product.name}</strong>
+                        <div>Category: ${product.category || 'Closed Abaya'}</div>
                         <div>Price: INR ${Number((Number(product.price || 0) * INR_PER_USD).toFixed(2))}</div>
+                        <div style="color: ${product.isFeatured ? '#2ecc71' : '#999'}">Featured: ${product.isFeatured ? '✓ Yes' : 'No'}</div>
                     </div>
                     <button type="button" class="btn btn-secondary" data-remove-id="${product.id}">Delete</button>
                 </div>

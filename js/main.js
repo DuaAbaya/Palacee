@@ -857,6 +857,7 @@ function normalizeCustomProduct(rawProduct) {
         reviews: Number(rawProduct.reviews || 0),
         fabric: (rawProduct.fabric || 'Premium Nidha').trim(),
         badge: (rawProduct.badge || 'new').trim(),
+        isFeatured: Boolean(rawProduct.isFeatured),
         isCustom: true
     };
 }
