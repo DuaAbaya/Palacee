@@ -402,6 +402,16 @@ async function syncStateFromCloud() {
             wishlist = snapshot.wishlist;
             saveScopedList('wishlist', wishlist);
         }
+        
+        // Sync hidden products from cloud for cross-device consistency
+        if (Array.isArray(snapshot.hiddenProductIds)) {
+            const cloudHidden = snapshot.hiddenProductIds.map(id => Number(id));
+            const localHidden = getHiddenProductIds();
+            // Merge: use unique IDs from both cloud and local
+            const merged = [...new Set([...cloudHidden, ...localHidden])];
+            saveHiddenProductIds(merged);
+            console.log('Synced hidden products from cloud:', cloudHidden.length, 'merged total:', merged.length);
+        }
 
         updateCartCount();
         updateWishlistCount();
@@ -650,6 +660,13 @@ async function loginAccount(email, password) {
             wishlist = loadScopedList('wishlist');
             await saveCloudUserField('cart', cart);
             await saveCloudUserField('wishlist', wishlist);
+            
+            // Also sync hidden products to cloud for cross-device consistency
+            const hiddenIds = getHiddenProductIds();
+            if (hiddenIds.length > 0) {
+                await saveCloudUserField('hiddenProductIds', hiddenIds)
+                    .catch(error => console.warn('Failed to sync hidden products to cloud:', error.message));
+            }
 
             updateCartCount();
             updateWishlistCount();
@@ -765,6 +782,12 @@ function hideProductById(productId) {
         ids.push(targetId);
         saveHiddenProductIds(ids);
         console.log('Product hidden:', targetId, '- Total hidden:', ids.length);
+        
+        // Sync to cloud for cross-device consistency
+        if (isCloudSyncEnabled() && isUserLoggedIn()) {
+            saveCloudUserField('hiddenProductIds', ids)
+                .catch(error => console.warn('Cloud hidden products sync failed:', error.message));
+        }
     } else {
         console.log('Product already hidden:', targetId);
     }
@@ -2113,6 +2136,7 @@ window.saveOrderHistory = saveOrderHistory;
 window.runCloudDiagnostics = runCloudDiagnostics;
 window.isInWishlist = isInWishlist;
 window.isProductHidden = isProductHidden;
+window.getHiddenProductIds = getHiddenProductIds;
 window.isAdminModeEnabled = isAdminModeEnabled;
 window.setAdminModeEnabled = setAdminModeEnabled;
 
