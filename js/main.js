@@ -819,31 +819,6 @@ function normalizeCustomProduct(rawProduct) {
     };
 }
 
-function loadCustomProducts() {
-    // Load from cloud first (public endpoint)
-    loadAdminProductsFromCloud().then(cloudProducts => {
-        if (cloudProducts && Array.isArray(cloudProducts)) {
-            saveStoredCustomProducts(cloudProducts);
-            cloudProducts.forEach(product => {
-                if (!products.find(p => Number(p.id) === Number(product.id))) {
-                    products.push(product);
-                }
-            });
-        }
-    }).catch(() => {});
-    
-    // Also load from localStorage
-    const customProducts = getStoredCustomProducts();
-    customProducts.forEach(product => {
-        if (!products.find(p => Number(p.id) === Number(product.id))) {
-            products.push(product);
-        }
-    });
-    
-    customProductsLoaded = true;
-    if (typeof renderProducts === 'function') renderProducts();
-}
-
 async function loadAdminProductsFromCloud() {
     if (!isCloudSyncEnabled()) return null;
     try {
@@ -902,6 +877,16 @@ async function syncCustomProductsFromCloud() {
         }
     } catch (error) {
         console.warn('Custom products cloud sync error:', error.message);
+    }
+}
+
+function getStoredCustomProducts() {
+    try {
+        const data = localStorage.getItem(CUSTOM_PRODUCTS_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (e) {
+        console.warn('Failed to get stored custom products:', e);
+        return [];
     }
 }
 
@@ -1044,24 +1029,33 @@ function removeProductAsAdmin(productId) {
 // INITIALIZATION
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
+    try {
+        initializeApp();
+    } catch (error) {
+        console.error('Initialization error:', error);
+    } finally {
+        // Always hide the page loader, even if there's an error
+        const loader = document.querySelector('.page-loader');
+        if (loader) {
+            loader.style.display = 'none';
+        }
+    }
 });
 
 function initializeApp() {
-    loadCustomProducts();
-    migrateLegacyGuestData();
-    hydrateUserState();
-    initializeTrackingScripts();
-    loadTheme();
-    loadLanguage();
-    updateCartCount();
-    updateWishlistCount();
-    syncAdminModeClass();
-    setupEventListeners();
-    showWelcomePopup();
-    syncStateFromCloud();
-    // Sync custom products from cloud for cross-device support
-    syncCustomProductsFromCloud();
+    try { loadCustomProducts(); } catch (e) { console.error('Error loading custom products:', e); }
+    try { migrateLegacyGuestData(); } catch (e) { console.error('Error migrating legacy data:', e); }
+    try { hydrateUserState(); } catch (e) { console.error('Error hydrating user state:', e); }
+    try { initializeTrackingScripts(); } catch (e) { console.error('Error initializing tracking:', e); }
+    try { loadTheme(); } catch (e) { console.error('Error loading theme:', e); }
+    try { loadLanguage(); } catch (e) { console.error('Error loading language:', e); }
+    try { updateCartCount(); } catch (e) { console.error('Error updating cart count:', e); }
+    try { updateWishlistCount(); } catch (e) { console.error('Error updating wishlist count:', e); }
+    try { syncAdminModeClass(); } catch (e) { console.error('Error syncing admin mode:', e); }
+    try { setupEventListeners(); } catch (e) { console.error('Error setting up event listeners:', e); }
+    try { showWelcomePopup(); } catch (e) { console.error('Error showing welcome popup:', e); }
+    try { syncStateFromCloud(); } catch (e) { console.error('Error syncing state from cloud:', e); }
+    try { syncCustomProductsFromCloud(); } catch (e) { console.error('Error syncing custom products from cloud:', e); }
 }
 
 // ============================================
@@ -2005,28 +1999,6 @@ async function loadAdminProductsFromCloud() {
     return null;
 }
 
-function loadCustomProducts() {
-    loadAdminProductsFromCloud().then(cloudProducts => {
-        if (cloudProducts && Array.isArray(cloudProducts)) {
-            saveStoredCustomProducts(cloudProducts);
-            cloudProducts.forEach(product => {
-                if (!products.find(p => Number(p.id) === Number(product.id))) {
-                    products.push(product);
-                }
-            });
-        }
-    }).catch(() => {});
-    
-    const customProducts = getStoredCustomProducts();
-    customProducts.forEach(product => {
-        if (!products.find(p => Number(p.id) === Number(product.id))) {
-            products.push(product);
-        }
-    });
-    
-    customProductsLoaded = true;
-    if (typeof renderProducts === 'function') renderProducts();
-}
 function promptAdminCode() {
     const code = prompt("Enter Admin Code:");
     if (code === "DAP-ADMIN-786") {

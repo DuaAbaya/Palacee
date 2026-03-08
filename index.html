@@ -29,7 +29,7 @@
 </head>
 <body>
     <button id="adminModeBtn" onclick="promptAdminCode()" style="position:fixed;top:10px;left:10px;z-index:9999;padding:8px 15px;background:#ff6b6b;color:white;border:none;border-radius:5px;cursor:pointer;">Admin</button>
-    <div class="page-loader"><div class="page-loader-spinner"></div>
+    <div class="page-loader"><div class="page-loader-spinner"></div></div>
     <nav class="navbar">
         <div class="navbar-container">
             <a href="index.html" class="navbar-logo">Dua <span>Abaya</span> Palace</a>
@@ -166,43 +166,81 @@
     <a href="admin-products.html" class="admin-hidden-link">Admin</a>
     <script src="js/main.js"></script>
     <script>
-        function initHomeProductSlider() {
-            const track = document.getElementById('homeProductsTrack');
-            const prevBtn = document.getElementById('homeProductsPrev');
-            const nextBtn = document.getElementById('homeProductsNext');
-            if (!track || !window.products || !window.products.length) return;
-            const featuredItems = window.products.slice(0, 10);
-            track.innerHTML = featuredItems.map(product => createProductCard(product)).join('');
-            updatePrices();
-            const step = () => Math.max(260, track.clientWidth * 0.85);
-            if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
-            if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
+        function hidePageLoader() {
+            try {
+                const loader = document.querySelector('.page-loader');
+                if (loader) {
+                    loader.style.display = 'none';
+                    loader.style.visibility = 'hidden';
+                    loader.style.opacity = '0';
+                }
+                document.body.style.visibility = 'visible';
+                document.body.style.opacity = '1';
+            } catch (e) {
+                console.error('Error hiding loader:', e);
+            }
         }
-        function refreshHomeProductSlider() {
-            const track = document.getElementById('homeProductsTrack');
-            if (track && window.products) {
+        
+        function initHomeProductSlider() {
+            try {
+                const track = document.getElementById('homeProductsTrack');
+                const prevBtn = document.getElementById('homeProductsPrev');
+                const nextBtn = document.getElementById('homeProductsNext');
+                if (!track || !window.products || !window.products.length) return;
                 const featuredItems = window.products.slice(0, 10);
                 track.innerHTML = featuredItems.map(product => createProductCard(product)).join('');
                 updatePrices();
+                const step = () => Math.max(260, track.clientWidth * 0.85);
+                if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
+                if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
+            } catch (error) {
+                console.error('Error initializing home product slider:', error);
             }
         }
+        
+        function refreshHomeProductSlider() {
+            try {
+                const track = document.getElementById('homeProductsTrack');
+                if (track && window.products) {
+                    const featuredItems = window.products.slice(0, 10);
+                    track.innerHTML = featuredItems.map(product => createProductCard(product)).join('');
+                    updatePrices();
+                }
+            } catch (error) {
+                console.error('Error refreshing home product slider:', error);
+            }
+        }
+        
         function promptAdminCode() {
-            const code = prompt("Enter Admin Code:");
-            if (code === "DAP-ADMIN-786") {
-                isAdminMode = true;
-                alert("Admin mode enabled!");
-                if (typeof renderProducts === 'function') renderProducts();
-                refreshHomeProductSlider();
-            } else {
-                alert("Wrong code!");
+            try {
+                const code = prompt("Enter Admin Code:");
+                if (code === "DAP-ADMIN-786") {
+                    isAdminMode = true;
+                    alert("Admin mode enabled!");
+                    if (typeof renderProducts === 'function') renderProducts();
+                    refreshHomeProductSlider();
+                } else {
+                    alert("Wrong code!");
+                }
+            } catch (error) {
+                console.error('Error in admin code prompt:', error);
             }
         }
+        
         window.addEventListener('load', () => {
-            setTimeout(() => {
-                const loader = document.querySelector('.page-loader');
-                if (loader) loader.style.display = 'none';
-            }, 500);
-            initHomeProductSlider();
+            try {
+                initHomeProductSlider();
+            } catch (error) {
+                console.error('Error in window load event:', error);
+            } finally {
+                // Always hide the loader
+                hidePageLoader();
+            }
+        });
+        
+        // Also hide loader on DOMContentLoaded as a backup
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(hidePageLoader, 100);
         });
     </script>
 </body>
