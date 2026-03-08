@@ -927,23 +927,8 @@ async function saveAdminProductsToCloud(products) {
                 body: JSON.stringify(products)
             });
         }
-    } catch (e) { console.warn('Cloud save failed:', e); }
-}
-
-
-async function saveAdminProductsToCloud(products) {
-    if (!isCloudSyncEnabled()) return;
-    try {
-        const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
-        if (baseUrl) {
-            await fetch(`${baseUrl}/adminProducts.json`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(products)
-            });
-        }
-    } catch (e) {
-        console.warn('Cloud save failed:', e);
+    } catch (e) { 
+        console.warn('Cloud save failed:', e); 
     }
 }
 
@@ -952,13 +937,33 @@ async function saveAdminProductsToCloud(products) {
 function removeAdminProduct(id) {
     const targetId = Number(id);
     let customProducts = getStoredCustomProducts();
+    const originalLength = customProducts.length;
     const filtered = customProducts.filter(p => Number(p.id) !== targetId);
-    if (filtered.length !== customProducts.length) {
-        saveStoredCustomProducts(filtered);
+    
+    // Check if product was actually removed
+    if (filtered.length === originalLength) {
+        // Product not found
+        console.warn('Product not found:', targetId);
+        return false;
     }
+    
+    // Save the filtered products
+    saveStoredCustomProducts(filtered);
+    
+    // Remove from products array
     products = products.filter(p => Number(p.id) !== targetId);
+    
+    // Sync with cloud
     saveAdminProductsToCloud(filtered);
-    if (typeof renderProducts === 'function') renderProducts();
+    
+    // Try to refresh both shop and home sliders
+    if (typeof renderProducts === 'function') {
+        try { renderProducts(); } catch (e) { console.error('Error rendering products:', e); }
+    }
+    if (typeof window.refreshHomeProductSlider === 'function') {
+        try { window.refreshHomeProductSlider(); } catch (e) { console.error('Error refreshing home slider:', e); }
+    }
+    
     return true;
 }
 
@@ -985,6 +990,11 @@ function removeAllAdminProducts() {
     renderProducts();
     if (typeof renderWishlist === 'function') renderWishlist();
     if (typeof renderCart === 'function') renderCart();
+    
+    // Refresh featured products slider if available
+    if (typeof window.refreshHomeProductSlider === 'function') {
+        try { window.refreshHomeProductSlider(); } catch (e) { console.error('Error refreshing home slider:', e); }
+    }
     
     showToast('All custom products removed.');
     return true;
@@ -1020,6 +1030,12 @@ function removeProductAsAdmin(productId) {
     updateCartCount();
     updateWishlistCount();
     renderProducts();
+    
+    // Refresh featured products slider if available
+    if (typeof window.refreshHomeProductSlider === 'function') {
+        try { window.refreshHomeProductSlider(); } catch (e) { console.error('Error refreshing home slider:', e); }
+    }
+    
     if (typeof renderWishlist === 'function') renderWishlist();
     if (typeof renderCart === 'function') renderCart();
     showToast('Product removed.');
