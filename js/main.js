@@ -304,6 +304,7 @@ async function firebaseDbRequest(path, method = 'GET', body = null) {
                         break;
                     }
                 }
+                
                 lastError = new Error(errorMessage);
                 break;
             }
@@ -407,6 +408,11 @@ async function syncStateFromCloud() {
         notifyUserStateUpdated();
     } catch (error) {
         console.warn('Cloud sync load failed:', error.message);
+        // Disable cloud sync on auth errors so they don't interfere with local operations
+        if (error.message && (error.message.includes('Session expired') || error.message.includes('unauthorized') || error.message.includes('401') || error.message.includes('403'))) {
+            cloudSyncTemporarilyDisabled = true;
+            console.log('Cloud auth failed, using local data only');
+        }
     }
 }
 
@@ -647,6 +653,11 @@ async function loginAccount(email, password) {
 
             updateCartCount();
             updateWishlistCount();
+            
+            // Re-enable cloud sync after successful login
+            cloudSyncTemporarilyDisabled = false;
+            console.log('Cloud sync re-enabled after successful login');
+            
             return { ok: true, user: currentUser };
         } catch (error) {
             return { ok: false, message: mapCloudAuthError(error.message) };
@@ -746,9 +757,17 @@ function isProductHidden(productId) {
 }
 
 function hideProductById(productId) {
+    const targetId = Number(productId);
     const ids = getHiddenProductIds();
-    ids.push(Number(productId));
-    saveHiddenProductIds(ids);
+    
+    // Don't add duplicates
+    if (!ids.includes(targetId)) {
+        ids.push(targetId);
+        saveHiddenProductIds(ids);
+        console.log('Product hidden:', targetId, '- Total hidden:', ids.length);
+    } else {
+        console.log('Product already hidden:', targetId);
+    }
 }
 
 function setupHiddenAdminAccess() {
@@ -860,12 +879,22 @@ async function syncCustomProductsFromCloud() {
         const cloudProducts = await loadCustomProductsFromCloud();
         if (cloudProducts && Array.isArray(cloudProducts)) {
             const localProducts = getStoredCustomProducts();
-            // Merge: add cloud products that don't exist locally
+            console.log('Cloud sync - cloud products:', cloudProducts.length, 'local products:', localProducts.length);
+            
+            // Merge: add cloud products that don't exist locally AND are not hidden
+            const hiddenIds = getHiddenProductIds ? getHiddenProductIds() : [];
             cloudProducts.forEach(cp => {
-                if (!localProducts.find(lp => Number(lp.id) === Number(cp.id))) {
+                const isHidden = hiddenIds.includes(Number(cp.id));
+                const exists = localProducts.find(lp => Number(lp.id) === Number(cp.id));
+                
+                if (!exists && !isHidden) {
+                    console.log('Adding from cloud:', cp.id);
                     localProducts.push(cp);
+                } else if (isHidden) {
+                    console.log('Skipping hidden product from cloud:', cp.id);
                 }
             });
+            
             // Save merged products locally
             saveStoredCustomProducts(localProducts);
             // Also add to the products array
@@ -874,9 +903,13 @@ async function syncCustomProductsFromCloud() {
                     products.push(product);
                 }
             });
+            
+            console.log('Cloud sync complete - final local products:', localProducts.length);
         }
     } catch (error) {
         console.warn('Custom products cloud sync error:', error.message);
+        // During initialization, just warn - don't disable cloud sync
+        // Disabling should only happen for user-triggered operations
     }
 }
 
@@ -947,11 +980,22 @@ function removeAdminProduct(id) {
         return false;
     }
     
-    // Save the filtered products
+    console.log('Removing admin product ID:', targetId);
+    console.log('Before removal - count:', originalLength);
+    console.log('After removal - count:', filtered.length);
+    
+    // Save the filtered products - MAKE SURE THIS IS SAVED
     saveStoredCustomProducts(filtered);
     
+    // Verify it was saved
+    const savedProducts = getStoredCustomProducts();
+    console.log('Verification - products in localStorage:', savedProducts.length);
+    console.log('Verification - product still exists?', savedProducts.find(p => Number(p.id) === targetId));
+    
     // Remove from products array
+    const beforeFilter = products.length;
     products = products.filter(p => Number(p.id) !== targetId);
+    console.log('Memory - before:', beforeFilter, 'after:', products.length);
     
     // Sync with cloud
     saveAdminProductsToCloud(filtered);
@@ -1001,25 +1045,42 @@ function removeAllAdminProducts() {
 }
 
 function removeProductAsAdmin(productId) {
+    console.log('=== removeProductAsAdmin called ===');
+    console.log('removeProductAsAdmin called with ID:', productId);
+    
     if (!isAdminModeEnabled()) {
+        console.log('Admin mode not enabled');
         showToast('Admin access required.', 'error');
-        return;
+        return false;
     }
+    
     const targetId = Number(productId);
+    console.log('Looking for product with ID:', targetId);
+    
     const target = products.find(product => Number(product.id) === targetId);
     if (!target) {
+        console.error('Product not found:', targetId);
         showToast('Product not found.', 'error');
-        return;
+        return false;
     }
-    if (!confirm('Remove this product?')) return;
+    
+    console.log('Found product:', target.name, '- Is Custom:', target.isCustom);
+    
+    if (!confirm('Remove this product?')) {
+        console.log('Removal cancelled by user');
+        return false;
+    }
 
     if (target.isCustom) {
+        console.log('Product is custom, removing from admin products');
         const removed = removeAdminProduct(targetId);
         if (!removed) {
+            console.error('Failed to remove admin product');
             showToast('Unable to remove product.', 'error');
-            return;
+            return false;
         }
     } else {
+        console.log('Product is built-in, hiding it');
         hideProductById(targetId);
     }
 
@@ -1029,16 +1090,31 @@ function removeProductAsAdmin(productId) {
     saveWishlist();
     updateCartCount();
     updateWishlistCount();
+    console.log('Cart and wishlist updated');
+    
+    console.log('Calling renderProducts...');
     renderProducts();
     
     // Refresh featured products slider if available
+    console.log('Calling refreshHomeProductSlider...');
     if (typeof window.refreshHomeProductSlider === 'function') {
-        try { window.refreshHomeProductSlider(); } catch (e) { console.error('Error refreshing home slider:', e); }
+        try { 
+            window.refreshHomeProductSlider(); 
+            console.log('Home product slider refreshed');
+        } catch (e) { 
+            console.error('Error refreshing home slider:', e); 
+        }
+    } else {
+        console.warn('window.refreshHomeProductSlider is not available');
     }
     
     if (typeof renderWishlist === 'function') renderWishlist();
     if (typeof renderCart === 'function') renderCart();
     showToast('Product removed.');
+    
+    console.log('=== Product removal completed ===');
+    console.log('Product removal completed successfully');
+    return true;
 }
 
 function removeFeaturedProductAsAdmin(productId) {
@@ -1209,8 +1285,18 @@ function updateCartQuantity(cartId, change) {
 function saveCart() {
     saveScopedList('cart', cart);
     localStorage.setItem(LEGACY_CART_KEY, JSON.stringify(cart));
+    // Fire-and-forget cloud sync - don't wait or let errors block local operation
     if (isCloudSyncEnabled() && isUserLoggedIn()) {
-        saveCloudUserField('cart', cart).catch(error => console.warn('Cloud cart sync failed:', error.message));
+        saveCloudUserField('cart', cart)
+            .catch(error => {
+                console.warn('Cloud cart sync failed:', error.message);
+                // Only disable cloud sync on auth errors from user-triggered operations
+                // This prevents the app from getting stuck on stale tokens
+                if (error.message && (error.message.includes('Session expired') || error.message.includes('401') || error.message.includes('403'))) {
+                    cloudSyncTemporarilyDisabled = true;
+                    console.log('Cloud auth expired, disabling cloud sync. Please login again.');
+                }
+            });
     }
 }
 
@@ -1530,8 +1616,17 @@ function removeFromWishlist(productId) {
 function saveWishlist() {
     saveScopedList('wishlist', wishlist);
     localStorage.setItem(LEGACY_WISHLIST_KEY, JSON.stringify(wishlist));
+    // Fire-and-forget cloud sync - don't wait or let errors block local operation
     if (isCloudSyncEnabled() && isUserLoggedIn()) {
-        saveCloudUserField('wishlist', wishlist).catch(error => console.warn('Cloud wishlist sync failed:', error.message));
+        saveCloudUserField('wishlist', wishlist)
+            .catch(error => {
+                console.warn('Cloud wishlist sync failed:', error.message);
+                // Only disable cloud sync on auth errors from user-triggered operations
+                if (error.message && (error.message.includes('Session expired') || error.message.includes('401') || error.message.includes('403'))) {
+                    cloudSyncTemporarilyDisabled = true;
+                    console.log('Cloud auth expired, disabling cloud sync. Please login again.');
+                }
+            });
     }
 }
 
@@ -2008,7 +2103,9 @@ window.updateCurrentUserProfile = updateCurrentUserProfile;
 window.saveOrderHistory = saveOrderHistory;
 window.runCloudDiagnostics = runCloudDiagnostics;
 window.isInWishlist = isInWishlist;
+window.isProductHidden = isProductHidden;
 window.isAdminModeEnabled = isAdminModeEnabled;
+window.setAdminModeEnabled = setAdminModeEnabled;
 
 async function loadAdminProductsFromCloud() {
     if (!isCloudSyncEnabled()) return null;
@@ -2020,15 +2117,4 @@ async function loadAdminProductsFromCloud() {
         }
     } catch (e) { console.warn('Cloud load failed:', e); }
     return null;
-}
-
-function promptAdminCode() {
-    const code = prompt("Enter Admin Code:");
-    if (code === "DAP-ADMIN-786") {
-        isAdminMode = true;
-        alert("Admin mode enabled!");
-        if (typeof renderProducts === 'function') renderProducts();
-    } else {
-        alert("Wrong code!");
-    }
 }

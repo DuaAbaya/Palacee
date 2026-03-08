@@ -29,7 +29,7 @@
     </style>
 </head>
 <body>
-    <button id="adminModeBtn" onclick="promptAdminCode()" style="position:fixed;top:10px;left:10px;z-index:9999;padding:8px 15px;background:#ff6b6b;color:white;border:none;border-radius:5px;cursor:pointer;">Admin</button>
+    <button id="adminModeBtn" onclick="promptAdminCode()" style="position:fixed;top:10px;left:10px;z-index:9999;padding:8px 15px;background:#ff6b6b;color:white;border:none;border-radius:5px;cursor:pointer;display:none;">Admin</button>
     <div class="page-loader"><div class="page-loader-spinner"></div></div>
     <nav class="navbar">
         <div class="navbar-container">
@@ -200,9 +200,11 @@
                 const featuredItems = window.products.slice(0, 10);
                 track.innerHTML = featuredItems.map(product => createFeaturedProductCard(product)).join('');
                 
-                // Update prices and set up event listeners
+                // Update prices
                 updatePrices();
-                setupFeaturedProductListeners();
+                
+                // Set up event delegation for delete buttons
+                setupFeaturedProductDeleteHandler(track);
                 
                 const step = () => Math.max(260, track.clientWidth * 0.85);
                 if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
@@ -229,7 +231,7 @@
                                         onclick="${isWishlisted ? `removeFromWishlist(${product.id})` : `addToWishlist(${product.id})`}"
                                         data-product-id="${product.id}">♥</button>
                                 <button class="product-action-btn" onclick="openQuickView(${product.id})">👁</button>
-                                ${showAdminRemove ? `<button class="product-action-btn featured-delete-btn" onclick="removeFeaturedProductAsAdmin(${product.id})" title="Remove product" style="font-size: 0.68rem; font-weight: 700;">✕</button>` : ''}
+                                ${showAdminRemove ? `<button class="product-action-btn featured-delete-btn" onclick="handleFeaturedDelete(event, ${product.id})" data-delete-id="${product.id}" title="Remove product" style="font-size: 0.68rem; font-weight: 700; cursor: pointer;">✕</button>` : ''}
                             </div>
                             <div class="product-quick-view" onclick="openQuickView(${product.id})">Quick View</div>
                         </div>
@@ -253,43 +255,100 @@
             }
         }
         
-        function setupFeaturedProductListeners() {
-            try {
-                const track = document.getElementById('homeProductsTrack');
-                if (!track) return;
-                
-                // Attach delete button listeners
-                track.querySelectorAll('.featured-delete-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const productId = Number(btn.getAttribute('onclick').match(/\d+/)[0]);
-                        if (window.removeProductAsAdmin) {
-                            window.removeProductAsAdmin(productId);
-                        }
-                    });
-                });
-                
-                // Attach wishlist button listeners
-                track.querySelectorAll('.product-action-btn.wishlist').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        // Already handled by onclick, just prevent default
-                    });
-                });
-            } catch (error) {
-                console.error('Error setting up featured product listeners:', error);
+        function handleFeaturedDelete(event, productId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            console.log('handleFeaturedDelete called for product ID:', productId);
+            
+            if (!productId) {
+                console.error('Invalid product ID');
+                alert('Error: Invalid product ID');
+                return;
             }
+            
+            if (!window.removeProductAsAdmin) {
+                console.error('removeProductAsAdmin function not available');
+                alert('Error: Admin functions not available. Please refresh and try again.');
+                return;
+            }
+            
+            console.log('Calling removeProductAsAdmin...');
+            // Call the delete function
+            window.removeProductAsAdmin(productId);
+        }
+        
+        function setupFeaturedProductDeleteHandler(track) {
+            if (!track) {
+                console.warn('Featured product track element not found');
+                return;
+            }
+            
+            console.log('Setting up featured product delete handler (backup)');
+            
+            // This is a backup for event delegation
+            // Primary method uses onclick handlers on buttons
+            track.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.featured-delete-btn');
+                if (!deleteBtn) return;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const productId = Number(deleteBtn.getAttribute('data-delete-id'));
+                console.log('Featured delete button clicked (delegation) for product ID:', productId);
+                
+                if (!productId) {
+                    console.error('Invalid product ID');
+                    return;
+                }
+                
+                if (!window.removeProductAsAdmin) {
+                    console.error('removeProductAsAdmin function not available on window');
+                    return;
+                }
+                
+                console.log('Calling removeProductAsAdmin with ID:', productId);
+                window.removeProductAsAdmin(productId);
+            });
         }
         
         function refreshHomeProductSlider() {
             try {
+                console.log('=== Refreshing home product slider ===');
                 const track = document.getElementById('homeProductsTrack');
-                if (track && window.products) {
-                    const featuredItems = window.products.slice(0, 10);
-                    track.innerHTML = featuredItems.map(product => createFeaturedProductCard(product)).join('');
-                    updatePrices();
-                    setupFeaturedProductListeners();
+                if (!track || !window.products) {
+                    console.warn('Track or products not available');
+                    return;
                 }
+                
+                console.log('All products count:', window.products.length);
+                
+                // Filter out hidden products (same as renderProducts does)
+                const allAvailableProducts = window.isProductHidden 
+                    ? window.products.filter(p => {
+                        const isHidden = window.isProductHidden(p.id);
+                        if (isHidden) {
+                            console.log('Filtering out hidden product:', p.id, '-', p.name);
+                        }
+                        return !isHidden;
+                      })
+                    : window.products;
+                
+                console.log('Available products after filtering:', allAvailableProducts.length);
+                
+                const featuredItems = allAvailableProducts.slice(0, 10);
+                console.log('Featured items count:', featuredItems.length);
+                console.log('Featured product IDs:', featuredItems.map(p => p.id).join(', '));
+                
+                track.innerHTML = featuredItems.map(product => createFeaturedProductCard(product)).join('');
+                
+                // Update prices
+                if (typeof updatePrices === 'function') {
+                    updatePrices();
+                }
+                
+                console.log('Home product slider refreshed successfully');
             } catch (error) {
                 console.error('Error refreshing home product slider:', error);
             }
@@ -300,23 +359,87 @@
         
         function promptAdminCode() {
             try {
-                const code = prompt("Enter Admin Code:");
-                if (code === "DAP-ADMIN-786") {
-                    isAdminMode = true;
-                    alert("Admin mode enabled!");
-                    if (typeof renderProducts === 'function') renderProducts();
-                    refreshHomeProductSlider();
-                } else {
+                // Check current admin state
+                const isCurrentlyAdmin = window.isAdminModeEnabled ? window.isAdminModeEnabled() : false;
+                
+                // Determine prompt message
+                const promptMessage = isCurrentlyAdmin 
+                    ? "Admin mode is currently ON. Enter code to turn it OFF, or cancel to keep it ON:"
+                    : "Admin mode is currently OFF. Enter code to turn it ON, or cancel to keep it OFF:";
+                
+                const code = prompt(promptMessage);
+                
+                // User cancelled the prompt
+                if (code === null) {
+                    return;
+                }
+                
+                // Check if code is correct
+                if (code !== "DAP-ADMIN-786") {
                     alert("Wrong code!");
+                    return;
+                }
+                
+                // Toggle admin mode
+                if (typeof window.setAdminModeEnabled === 'function') {
+                    const newState = !isCurrentlyAdmin;
+                    window.setAdminModeEnabled(newState);
+                    alert(newState ? "Admin mode enabled!" : "Admin mode disabled!");
+                    
+                    // Update button appearance
+                    updateAdminButtonStatus();
+                } else {
+                    // Fallback if function not available yet
+                    if (typeof setAdminModeEnabled === 'function') {
+                        const newState = !isCurrentlyAdmin;
+                        setAdminModeEnabled(newState);
+                        alert(newState ? "Admin mode enabled!" : "Admin mode disabled!");
+                        updateAdminButtonStatus();
+                    } else {
+                        alert("Admin functions not loaded. Please refresh the page.");
+                        return;
+                    }
+                }
+                
+                // Refresh displays
+                if (typeof renderProducts === 'function') {
+                    try { renderProducts(); } catch (e) { console.error('Error rendering products:', e); }
+                }
+                if (typeof window.refreshHomeProductSlider === 'function') {
+                    try { window.refreshHomeProductSlider(); } catch (e) { console.error('Error refreshing slider:', e); }
                 }
             } catch (error) {
                 console.error('Error in admin code prompt:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+        
+        function updateAdminButtonStatus() {
+            try {
+                const btn = document.getElementById('adminModeBtn');
+                if (!btn) return;
+                
+                const isAdmin = window.isAdminModeEnabled ? window.isAdminModeEnabled() : false;
+                if (isAdmin) {
+                    btn.style.background = '#2ecc71';
+                    btn.textContent = 'Admin ✓';
+                } else {
+                    btn.style.background = '#ff6b6b';
+                    btn.textContent = 'Admin';
+                }
+            } catch (error) {
+                console.error('Error updating admin button status:', error);
             }
         }
         
         window.addEventListener('load', () => {
             try {
                 initHomeProductSlider();
+                
+                // Update admin button status on page load
+                setTimeout(() => {
+                    updateAdminButtonStatus();
+                }, 100);
             } catch (error) {
                 console.error('Error in window load event:', error);
             } finally {
@@ -327,7 +450,10 @@
         
         // Also hide loader on DOMContentLoaded as a backup
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(hidePageLoader, 100);
+            setTimeout(() => {
+                hidePageLoader();
+                updateAdminButtonStatus();
+            }, 100);
         });
     </script>
 </body>
