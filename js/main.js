@@ -2027,3 +2027,13 @@ function loadCustomProducts() {
     customProductsLoaded = true;
     if (typeof renderProducts === 'function') renderProducts();
 }
+function promptAdminCode() {
+    const code = prompt("Enter Admin Code:");
+    if (code === "DAP-ADMIN-786") {
+        isAdminMode = true;
+        alert("Admin mode enabled!");
+        if (typeof renderProducts === 'function') renderProducts();
+    } else {
+        alert("Wrong code!");
+    }
+}
