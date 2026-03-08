@@ -25,15 +25,13 @@ const products = [
         reviews: 32,
         fabric: "Premium Nidha",
         badge: "new"
-        },
-        
-
-]
+    }
+];
 
 // ============================================
 // TRANSLATIONS
 // ============================================
-const ranslations = {
+const translations = {
     en: {
         home: "Home", shop: "Shop", about: "About", contact: "Contact",
         cart: "Cart", account: "Account", search: "Search", login: "Login",
@@ -821,16 +819,45 @@ function normalizeCustomProduct(rawProduct) {
     };
 }
 
-function getStoredCustomProducts() {
-    const raw = localStorage.getItem(CUSTOM_PRODUCTS_KEY);
-    if (!raw) return [];
-    try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-        return [];
-    }
+function loadCustomProducts() {
+    // Load from cloud first (public endpoint)
+    loadAdminProductsFromCloud().then(cloudProducts => {
+        if (cloudProducts && Array.isArray(cloudProducts)) {
+            saveStoredCustomProducts(cloudProducts);
+            cloudProducts.forEach(product => {
+                if (!products.find(p => Number(p.id) === Number(product.id))) {
+                    products.push(product);
+                }
+            });
+        }
+    }).catch(() => {});
+    
+    // Also load from localStorage
+    const customProducts = getStoredCustomProducts();
+    customProducts.forEach(product => {
+        if (!products.find(p => Number(p.id) === Number(product.id))) {
+            products.push(product);
+        }
+    });
+    
+    customProductsLoaded = true;
+    if (typeof renderProducts === 'function') renderProducts();
 }
+
+async function loadAdminProductsFromCloud() {
+    if (!isCloudSyncEnabled()) return null;
+    try {
+        const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
+        if (baseUrl) {
+            const response = await fetch(`${baseUrl}/adminProducts.json`);
+            if (response.ok) return await response.json();
+        }
+    } catch (e) {
+        console.warn('Cloud load failed:', e);
+    }
+    return null;
+}
+
 
 // Cloud sync for custom products (admin products)
 async function saveCustomProductsToCloud(customProducts) {
@@ -899,23 +926,58 @@ function addAdminProduct(rawProduct) {
     customProducts.unshift(newProduct);
     saveStoredCustomProducts(customProducts);
     products.push(newProduct);
-    // Sync to cloud for cross-device support
-    saveCustomProductsToCloud(customProducts);
+    saveAdminProductsToCloud(customProducts);
+    if (typeof renderProducts === 'function') renderProducts();
     return newProduct;
 }
 
-function removeAdminProduct(productId) {
-    const targetId = Number(productId);
-    const customProducts = getStoredCustomProducts();
-    const nextCustom = customProducts.filter(product => Number(product.id) !== targetId);
-    if (nextCustom.length === customProducts.length) return false;
-    saveStoredCustomProducts(nextCustom);
-    const index = products.findIndex(product => Number(product.id) === targetId && product.isCustom);
-    if (index !== -1) products.splice(index, 1);
-    // Sync to cloud for cross-device support
-    saveCustomProductsToCloud(nextCustom);
+async function saveAdminProductsToCloud(products) {
+    if (!isCloudSyncEnabled()) return;
+    try {
+        const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
+        if (baseUrl) {
+            await fetch(`${baseUrl}/adminProducts.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(products)
+            });
+        }
+    } catch (e) { console.warn('Cloud save failed:', e); }
+}
+
+
+async function saveAdminProductsToCloud(products) {
+    if (!isCloudSyncEnabled()) return;
+    try {
+        const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
+        if (baseUrl) {
+            await fetch(`${baseUrl}/adminProducts.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(products)
+            });
+        }
+    } catch (e) {
+        console.warn('Cloud save failed:', e);
+    }
+}
+
+
+
+function removeAdminProduct(id) {
+    const targetId = Number(id);
+    let customProducts = getStoredCustomProducts();
+    const filtered = customProducts.filter(p => Number(p.id) !== targetId);
+    if (filtered.length !== customProducts.length) {
+        saveStoredCustomProducts(filtered);
+    }
+    products = products.filter(p => Number(p.id) !== targetId);
+    saveAdminProductsToCloud(filtered);
+    if (typeof renderProducts === 'function') renderProducts();
     return true;
 }
+
+
 
 function removeAllAdminProducts() {
     const customProducts = getStoredCustomProducts();
@@ -1930,3 +1992,38 @@ window.getUserOrders = getUserOrders;
 window.updateCurrentUserProfile = updateCurrentUserProfile;
 window.saveOrderHistory = saveOrderHistory;
 window.runCloudDiagnostics = runCloudDiagnostics;
+
+async function loadAdminProductsFromCloud() {
+    if (!isCloudSyncEnabled()) return null;
+    try {
+        const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
+        if (baseUrl) {
+            const response = await fetch(`${baseUrl}/adminProducts.json`);
+            if (response.ok) return await response.json();
+        }
+    } catch (e) { console.warn('Cloud load failed:', e); }
+    return null;
+}
+
+function loadCustomProducts() {
+    loadAdminProductsFromCloud().then(cloudProducts => {
+        if (cloudProducts && Array.isArray(cloudProducts)) {
+            saveStoredCustomProducts(cloudProducts);
+            cloudProducts.forEach(product => {
+                if (!products.find(p => Number(p.id) === Number(product.id))) {
+                    products.push(product);
+                }
+            });
+        }
+    }).catch(() => {});
+    
+    const customProducts = getStoredCustomProducts();
+    customProducts.forEach(product => {
+        if (!products.find(p => Number(p.id) === Number(product.id))) {
+            products.push(product);
+        }
+    });
+    
+    customProductsLoaded = true;
+    if (typeof renderProducts === 'function') renderProducts();
+}
