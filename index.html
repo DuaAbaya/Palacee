@@ -18,11 +18,12 @@
         .home-products-arrow:hover { background: var(--gold); color: var(--white); }
         .home-products-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 240px); gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; scroll-behavior: smooth; padding-bottom: 2px; }
         .home-products-track::-webkit-scrollbar { display: none; }
-        .home-products-track .product-card { scroll-snap-align: start; max-width: 240px; }
-        .home-products-track .product-image { height: 220px; }
-        .home-products-track .product-image img { height: 100%; object-fit: cover; }
-        .home-products-track .product-info { padding: 12px; }
-        .home-products-track .product-title { font-size: 1rem; }
+        .home-products-track .product-card { scroll-snap-align: start; max-width: 240px; width: 240px !important; }
+        .home-products-track .product-card .product-image { height: 280px !important; }
+        .home-products-track .product-card .product-image img { height: 100%; object-fit: cover; }
+        .home-products-track .product-card .product-info { padding: 12px; }
+        .home-products-track .product-card .product-title { font-size: 0.95rem; }
+        .home-products-track .product-card .product-price { font-size: 0.9rem; }
         @media (max-width: 768px) { .home-products-slider-head { align-items: flex-end; } .home-products-track { grid-auto-columns: minmax(190px, 82%); } }
         .admin-hidden-link { position: fixed; left: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: rgba(0,0,0,0.08); opacity: 0.08; z-index: 5; text-indent: -9999px; overflow: hidden; }
     </style>
@@ -87,7 +88,9 @@
                     <button class="home-products-arrow" type="button" id="homeProductsPrev"><i class="fas fa-chevron-left"></i></button>
                     <button class="home-products-arrow" type="button" id="homeProductsNext"><i class="fas fa-chevron-right"></i></button>
                 </div>
+            </div>
             <div class="home-products-track" id="homeProductsTrack"></div>
+        </div>
     </section>
     <section class="hero">
         <div class="hero-background"></div>
@@ -99,8 +102,9 @@
                     <a href="shop.html" class="btn btn-primary">Shop Now</a>
                     <a href="about.html" class="btn btn-secondary">Our Story</a>
                 </div>
+            </div>
+            <div class="hero-scroll"><span>Scroll</span><i class="fas fa-chevron-down"></i></div>
         </div>
-        <div class="hero-scroll"><span>Scroll</span><i class="fas fa-chevron-down"></i></div>
     </section>
     <footer class="footer">
         <div class="footer-container">
@@ -113,6 +117,7 @@
                     <a href="#"><i class="fab fa-twitter"></i></a>
                     <a href="#"><i class="fab fa-pinterest"></i></a>
                 </div>
+            </div>
             <div class="footer-section">
                 <h3>Quick Links</h3>
                 <ul class="footer-links">
@@ -140,18 +145,21 @@
                     <li><i class="fab fa-whatsapp"></i> +91 9415153294</li>
                 </ul>
             </div>
-        <div class="footer-bottom">
-            <p>&copy; 2024 Dua Abaya Palace. All rights reserved.</p>
-            <div class="footer-bottom-links">
-                <a href="#">Terms of Service</a>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Shipping</a>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Dua Abaya Palace. All rights reserved.</p>
+                <div class="footer-bottom-links">
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Shipping</a>
+                </div>
             </div>
+        </div>
     </footer>
     <div class="modal" id="quickViewModal">
         <div class="modal-content">
             <button class="modal-close">&times;</button>
             <div class="quick-view-content"></div>
+        </div>
     </div>
     <div class="popup" id="welcomePopup">
         <div class="popup-content">
@@ -160,6 +168,7 @@
             <h3>Welcome to Dua Abaya Palace!</h3>
             <a href="shop.html" class="btn btn-primary">Shop Now</a>
         </div>
+    </div>
     <div class="toast"></div>
     <button class="scroll-top" onclick="scrollToTop()"><i class="fas fa-chevron-up"></i></button>
     <a href="https://wa.me/9415153294" class="whatsapp-float" target="_blank"><i class="fab fa-whatsapp"></i></a>
@@ -187,9 +196,14 @@
                 const prevBtn = document.getElementById('homeProductsPrev');
                 const nextBtn = document.getElementById('homeProductsNext');
                 if (!track || !window.products || !window.products.length) return;
+                
                 const featuredItems = window.products.slice(0, 10);
-                track.innerHTML = featuredItems.map(product => createProductCard(product)).join('');
+                track.innerHTML = featuredItems.map(product => createFeaturedProductCard(product)).join('');
+                
+                // Update prices and set up event listeners
                 updatePrices();
+                setupFeaturedProductListeners();
+                
                 const step = () => Math.max(260, track.clientWidth * 0.85);
                 if (prevBtn) prevBtn.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
                 if (nextBtn) nextBtn.addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
@@ -198,13 +212,83 @@
             }
         }
         
+        function createFeaturedProductCard(product) {
+            try {
+                if (!product) return '';
+                
+                const isWishlisted = window.isInWishlist ? window.isInWishlist(product.id) : false;
+                const showAdminRemove = window.isAdminModeEnabled ? window.isAdminModeEnabled() : false;
+                
+                return `
+                    <div class="product-card" data-product-id="${product.id}">
+                        <div class="product-image">
+                            <img src="${product.image || 'images/abaya_full_1_9x16.png'}" alt="${product.name}">
+                            ${product.badge ? `<div class="product-badges"><span class="product-badge ${product.badge}">${product.badge}</span></div>` : ''}
+                            <div class="product-actions">
+                                <button class="product-action-btn wishlist ${isWishlisted ? 'active' : ''}" 
+                                        onclick="${isWishlisted ? `removeFromWishlist(${product.id})` : `addToWishlist(${product.id})`}"
+                                        data-product-id="${product.id}">♥</button>
+                                <button class="product-action-btn" onclick="openQuickView(${product.id})">👁</button>
+                                ${showAdminRemove ? `<button class="product-action-btn featured-delete-btn" onclick="removeFeaturedProductAsAdmin(${product.id})" title="Remove product" style="font-size: 0.68rem; font-weight: 700;">✕</button>` : ''}
+                            </div>
+                            <div class="product-quick-view" onclick="openQuickView(${product.id})">Quick View</div>
+                        </div>
+                        <div class="product-info">
+                            <span class="product-category">${product.category || 'Closed Abaya'}</span>
+                            <h3 class="product-title"><a href="product.html?id=${product.id}">${product.name}</a></h3>
+                            <div class="product-price">
+                                <span class="current price-convert" data-price="${product.price}">${window.formatPrice ? window.formatPrice(product.price) : '₹' + product.price}</span>
+                                ${product.originalPrice ? `<span class="original price-convert" data-price="${product.originalPrice}">${window.formatPrice ? window.formatPrice(product.originalPrice) : '₹' + product.originalPrice}</span>` : ''}
+                            </div>
+                            <div class="product-rating">
+                                ${'★'.repeat(Math.floor(product.rating || 4.8))}${'☆'.repeat(5 - Math.floor(product.rating || 4.8))}
+                                <span>(${product.reviews || 0})</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error creating featured product card:', error, product);
+                return '';
+            }
+        }
+        
+        function setupFeaturedProductListeners() {
+            try {
+                const track = document.getElementById('homeProductsTrack');
+                if (!track) return;
+                
+                // Attach delete button listeners
+                track.querySelectorAll('.featured-delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const productId = Number(btn.getAttribute('onclick').match(/\d+/)[0]);
+                        if (window.removeProductAsAdmin) {
+                            window.removeProductAsAdmin(productId);
+                        }
+                    });
+                });
+                
+                // Attach wishlist button listeners
+                track.querySelectorAll('.product-action-btn.wishlist').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Already handled by onclick, just prevent default
+                    });
+                });
+            } catch (error) {
+                console.error('Error setting up featured product listeners:', error);
+            }
+        }
+        
         function refreshHomeProductSlider() {
             try {
                 const track = document.getElementById('homeProductsTrack');
                 if (track && window.products) {
                     const featuredItems = window.products.slice(0, 10);
-                    track.innerHTML = featuredItems.map(product => createProductCard(product)).join('');
+                    track.innerHTML = featuredItems.map(product => createFeaturedProductCard(product)).join('');
                     updatePrices();
+                    setupFeaturedProductListeners();
                 }
             } catch (error) {
                 console.error('Error refreshing home product slider:', error);

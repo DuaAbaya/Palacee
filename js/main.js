@@ -1041,6 +1041,10 @@ function removeProductAsAdmin(productId) {
     showToast('Product removed.');
 }
 
+function removeFeaturedProductAsAdmin(productId) {
+    return removeProductAsAdmin(productId);
+}
+
 // ============================================
 // INITIALIZATION
 // ============================================
@@ -1992,6 +1996,7 @@ window.getAdminProducts = getStoredCustomProducts;
 window.addAdminProduct = addAdminProduct;
 window.removeAdminProduct = removeAdminProduct;
 window.removeProductAsAdmin = removeProductAsAdmin;
+window.removeFeaturedProductAsAdmin = removeFeaturedProductAsAdmin;
 window.removeAllAdminProducts = removeAllAdminProducts;
 window.registerAccount = registerAccount;
 window.loginAccount = loginAccount;
@@ -2002,6 +2007,8 @@ window.getUserOrders = getUserOrders;
 window.updateCurrentUserProfile = updateCurrentUserProfile;
 window.saveOrderHistory = saveOrderHistory;
 window.runCloudDiagnostics = runCloudDiagnostics;
+window.isInWishlist = isInWishlist;
+window.isAdminModeEnabled = isAdminModeEnabled;
 
 async function loadAdminProductsFromCloud() {
     if (!isCloudSyncEnabled()) return null;
