@@ -898,15 +898,23 @@ async function saveCustomProductsToCloud(customProducts) {
 
 async function loadCustomProductsFromCloud() {
     if (!isCloudSyncEnabled()) return null;
+    const normalizeCloudProductsPayload = (payload) => {
+        if (Array.isArray(payload)) return payload;
+        if (payload && typeof payload === 'object') return Object.values(payload);
+        return null;
+    };
     try {
         if (cloudSession?.idToken) {
             const data = await firebaseDbRequest('/adminProducts', 'GET');
-            if (Array.isArray(data)) return data;
+            const normalized = normalizeCloudProductsPayload(data);
+            if (normalized) return normalized;
         }
-        return await loadAdminProductsFromCloud();
+        const fallbackData = await loadAdminProductsFromCloud();
+        return normalizeCloudProductsPayload(fallbackData);
     } catch (error) {
         console.warn('Cloud custom products load failed:', error.message);
-        return await loadAdminProductsFromCloud();
+        const fallbackData = await loadAdminProductsFromCloud();
+        return normalizeCloudProductsPayload(fallbackData);
     }
 }
 
@@ -914,7 +922,7 @@ async function syncCustomProductsFromCloud() {
     if (!isCloudSyncEnabled()) return;
     try {
         const cloudProducts = await loadCustomProductsFromCloud();
-        if (cloudProducts && Array.isArray(cloudProducts)) {
+        if (Array.isArray(cloudProducts)) {
             const normalizedCloudProducts = cloudProducts.map(normalizeCustomProduct);
             const localProducts = getStoredCustomProducts();
             console.log('Cloud sync - cloud products:', normalizedCloudProducts.length, 'local products:', localProducts.length);
@@ -997,7 +1005,7 @@ function addAdminProduct(rawProduct) {
     customProducts.unshift(newProduct);
     saveStoredCustomProducts(customProducts);
     products.push(newProduct);
-    saveAdminProductsToCloud(customProducts);
+    saveCustomProductsToCloud(customProducts);
     if (typeof renderProducts === 'function') renderProducts();
     return newProduct;
 }
@@ -1051,7 +1059,7 @@ function removeAdminProduct(id) {
     console.log('Memory - before:', beforeFilter, 'after:', products.length);
     
     // Sync with cloud
-    saveAdminProductsToCloud(filtered);
+    saveCustomProductsToCloud(filtered);
     
     // Try to refresh both shop and home sliders
     if (typeof renderProducts === 'function') {
