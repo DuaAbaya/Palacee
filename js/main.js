@@ -725,28 +725,29 @@ async function requestPasswordReset(email) {
                 const code = String(data?.error?.message || '');
                 if (code === 'EMAIL_NOT_FOUND') {
                     // Prevent account enumeration while keeping UX simple.
-                    return { ok: true, message: 'If this email is registered, a reset link has been sent.' };
+                    return { ok: true, message: 'If this email is registered, a reset link has been sent.', debugCode: code };
                 }
                 if (code === 'OPERATION_NOT_ALLOWED') {
-                    return { ok: false, message: 'Password reset is disabled in Firebase Auth. Enable Email/Password sign-in.' };
+                    return { ok: false, message: 'Password reset is disabled in Firebase Auth. Enable Email/Password sign-in.', debugCode: code };
                 }
-                return { ok: false, message: mapCloudAuthError(code) };
+                return { ok: false, message: mapCloudAuthError(code), debugCode: code };
             }
-            return { ok: true, message: 'Password reset email sent. Check your inbox.' };
+            return { ok: true, message: 'Password reset email sent. Check your inbox.', debugCode: 'OK' };
         } catch (error) {
-            return { ok: false, message: 'Network error while sending reset email.' };
+            return { ok: false, message: 'Network error while sending reset email.', debugCode: 'NETWORK_REQUEST_FAILED' };
         }
     }
 
     const users = getUsers();
     const exists = users.some(user => normalizeEmail(user.email) === normalizedEmail);
     if (!exists) {
-        return { ok: false, message: 'Account not found for this email.' };
+        return { ok: false, message: 'Account not found for this email.', debugCode: 'LOCAL_EMAIL_NOT_FOUND' };
     }
     return {
         ok: false,
         requiresLocalReset: true,
-        message: 'Cloud reset is unavailable. Set a new password here.'
+        message: 'Cloud reset is unavailable. Set a new password here.',
+        debugCode: 'LOCAL_RESET_REQUIRED'
     };
 }
 

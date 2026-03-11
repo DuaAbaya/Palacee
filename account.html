@@ -281,7 +281,8 @@
 
             const result = await window.requestPasswordReset(email);
             if (result.ok) {
-                window.showToast(result.message || 'Password reset instructions sent.');
+                const successMessage = result.debugCode ? `${result.message} [${result.debugCode}]` : (result.message || 'Password reset instructions sent.');
+                window.showToast(successMessage);
                 return;
             }
 
@@ -299,7 +300,8 @@
                 return;
             }
 
-            window.showToast(result.message || 'Unable to reset password.', 'error');
+            const errorMessage = result.debugCode ? `${result.message} [${result.debugCode}]` : (result.message || 'Unable to reset password.');
+            window.showToast(errorMessage, 'error');
         }
 
         function handleLogout() {
