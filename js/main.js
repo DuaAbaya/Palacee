@@ -176,6 +176,11 @@ function isCloudSyncEnabled() {
     return Boolean(!cloudSyncTemporarilyDisabled && CLOUD_SYNC_CONFIG.enabled && CLOUD_SYNC_CONFIG.firebaseApiKey);
 }
 
+function isCustomProductsCloudSyncEnabled() {
+    const hasDbBase = Boolean(String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').trim() || String(CLOUD_SYNC_CONFIG.firebaseProjectId || '').trim());
+    return Boolean(CLOUD_SYNC_CONFIG.enabled && hasDbBase);
+}
+
 function mapCloudAuthError(message) {
     const code = String(message || '').trim();
     if (code === 'NETWORK_REQUEST_FAILED' || code === 'Failed to fetch') {
@@ -864,7 +869,7 @@ function normalizeCustomProduct(rawProduct) {
 }
 
 async function loadAdminProductsFromCloud() {
-    if (!isCloudSyncEnabled()) return null;
+    if (!isCustomProductsCloudSyncEnabled()) return null;
     try {
         const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
         if (baseUrl) {
@@ -880,13 +885,13 @@ async function loadAdminProductsFromCloud() {
 
 // Cloud sync for custom products (admin products)
 async function saveCustomProductsToCloud(customProducts) {
-    if (!isCloudSyncEnabled()) {
+    if (!isCustomProductsCloudSyncEnabled()) {
         lastCustomProductsSyncError = 'Cloud sync not configured.';
         return false;
     }
     lastCustomProductsSyncError = '';
     try {
-        if (cloudSession?.idToken) {
+        if (isCloudSyncEnabled() && cloudSession?.idToken) {
             await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
             return true;
         }
@@ -908,14 +913,14 @@ async function saveCustomProductsToCloud(customProducts) {
 }
 
 async function loadCustomProductsFromCloud() {
-    if (!isCloudSyncEnabled()) return null;
+    if (!isCustomProductsCloudSyncEnabled()) return null;
     const normalizeCloudProductsPayload = (payload) => {
         if (Array.isArray(payload)) return payload;
         if (payload && typeof payload === 'object') return Object.values(payload);
         return null;
     };
     try {
-        if (cloudSession?.idToken) {
+        if (isCloudSyncEnabled() && cloudSession?.idToken) {
             const data = await firebaseDbRequest('/adminProducts', 'GET');
             const normalized = normalizeCloudProductsPayload(data);
             if (normalized) return normalized;
@@ -930,7 +935,7 @@ async function loadCustomProductsFromCloud() {
 }
 
 async function syncCustomProductsFromCloud() {
-    if (!isCloudSyncEnabled()) return;
+    if (!isCustomProductsCloudSyncEnabled()) return;
     try {
         const cloudProducts = await loadCustomProductsFromCloud();
         if (Array.isArray(cloudProducts)) {
@@ -1026,7 +1031,7 @@ async function addAdminProduct(rawProduct) {
 }
 
 async function saveAdminProductsToCloud(products) {
-    if (!isCloudSyncEnabled()) return;
+    if (!isCustomProductsCloudSyncEnabled()) throw new Error('Cloud sync not configured.');
     const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
     if (!baseUrl) throw new Error('Realtime Database URL missing.');
 
@@ -2194,14 +2199,3 @@ window.getHiddenProductIds = getHiddenProductIds;
 window.isAdminModeEnabled = isAdminModeEnabled;
 window.setAdminModeEnabled = setAdminModeEnabled;
 
-async function loadAdminProductsFromCloud() {
-    if (!isCloudSyncEnabled()) return null;
-    try {
-        const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
-        if (baseUrl) {
-            const response = await fetch(`${baseUrl}/adminProducts.json`);
-            if (response.ok) return await response.json();
-        }
-    } catch (e) { console.warn('Cloud load failed:', e); }
-    return null;
-}
