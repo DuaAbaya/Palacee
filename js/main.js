@@ -703,6 +703,68 @@ async function loginAccount(email, password) {
     return { ok: true, user };
 }
 
+async function requestPasswordReset(email) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+        return { ok: false, message: 'Please enter a valid email.' };
+    }
+
+    const hasCloudAuth = Boolean(CLOUD_SYNC_CONFIG.enabled && CLOUD_SYNC_CONFIG.firebaseApiKey);
+    if (hasCloudAuth) {
+        try {
+            const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${CLOUD_SYNC_CONFIG.firebaseApiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    requestType: 'PASSWORD_RESET',
+                    email: normalizedEmail
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                const code = String(data?.error?.message || '');
+                if (code === 'EMAIL_NOT_FOUND') {
+                    // Prevent account enumeration while keeping UX simple.
+                    return { ok: true, message: 'If this email is registered, a reset link has been sent.' };
+                }
+                if (code === 'OPERATION_NOT_ALLOWED') {
+                    return { ok: false, message: 'Password reset is disabled in Firebase Auth. Enable Email/Password sign-in.' };
+                }
+                return { ok: false, message: mapCloudAuthError(code) };
+            }
+            return { ok: true, message: 'Password reset email sent. Check your inbox.' };
+        } catch (error) {
+            return { ok: false, message: 'Network error while sending reset email.' };
+        }
+    }
+
+    const users = getUsers();
+    const exists = users.some(user => normalizeEmail(user.email) === normalizedEmail);
+    if (!exists) {
+        return { ok: false, message: 'Account not found for this email.' };
+    }
+    return {
+        ok: false,
+        requiresLocalReset: true,
+        message: 'Cloud reset is unavailable. Set a new password here.'
+    };
+}
+
+function resetLocalPassword(email, newPassword) {
+    const normalizedEmail = normalizeEmail(email);
+    const nextPassword = String(newPassword || '');
+    if (!normalizedEmail) return { ok: false, message: 'Invalid email.' };
+    if (nextPassword.length < 6) return { ok: false, message: 'Password must be at least 6 characters.' };
+
+    const users = getUsers();
+    const index = users.findIndex(user => normalizeEmail(user.email) === normalizedEmail);
+    if (index === -1) return { ok: false, message: 'Account not found for this email.' };
+
+    users[index] = { ...users[index], password: nextPassword };
+    saveUsers(users);
+    return { ok: true, message: 'Password updated successfully. Please login.' };
+}
+
 function logoutAccount() {
     setCloudSession(null);
     setCurrentUserById('');
@@ -2282,6 +2344,8 @@ window.removeFeaturedProductAsAdmin = removeFeaturedProductAsAdmin;
 window.removeAllAdminProducts = removeAllAdminProducts;
 window.registerAccount = registerAccount;
 window.loginAccount = loginAccount;
+window.requestPasswordReset = requestPasswordReset;
+window.resetLocalPassword = resetLocalPassword;
 window.logoutAccount = logoutAccount;
 window.isUserLoggedIn = isUserLoggedIn;
 window.getCurrentUser = () => currentUser;

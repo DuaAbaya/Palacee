@@ -56,7 +56,7 @@
                         <label style="display: flex; align-items: center; gap: 8px;">
                             <input type="checkbox"> Remember me
                         </label>
-                        <a href="#" style="color: var(--gold); font-size: 0.9rem;">Forgot Password?</a>
+                        <a href="#" id="forgotPasswordLink" onclick="handleForgotPasswordClick(event)" style="color: var(--gold); font-size: 0.9rem;">Forgot Password?</a>
                     </div>
                     <button type="submit" class="btn btn-primary">Login</button>
                 </form>
@@ -271,6 +271,35 @@
             e.target.reset();
             syncAccountView();
             window.showToast('Account created successfully!');
+        }
+
+        async function handleForgotPasswordClick(event) {
+            event.preventDefault();
+            const seededEmail = document.getElementById('loginEmail')?.value?.trim() || '';
+            const email = window.prompt('Enter your registered email for password reset', seededEmail);
+            if (email === null) return;
+
+            const result = await window.requestPasswordReset(email);
+            if (result.ok) {
+                window.showToast(result.message || 'Password reset instructions sent.');
+                return;
+            }
+
+            if (result.requiresLocalReset) {
+                const nextPassword = window.prompt('Enter new password (minimum 6 characters)');
+                if (nextPassword === null) return;
+                const confirmPassword = window.prompt('Confirm new password');
+                if (confirmPassword === null) return;
+                if (nextPassword !== confirmPassword) {
+                    window.showToast('Passwords do not match.', 'error');
+                    return;
+                }
+                const resetResult = window.resetLocalPassword(email, nextPassword);
+                window.showToast(resetResult.message, resetResult.ok ? undefined : 'error');
+                return;
+            }
+
+            window.showToast(result.message || 'Unable to reset password.', 'error');
         }
 
         function handleLogout() {
