@@ -89,6 +89,7 @@ let currentTheme = localStorage.getItem('theme') || 'light';
 
 const CUSTOM_PRODUCTS_KEY = 'customProducts';
 let customProductsLoaded = false;
+let lastCustomProductsSyncError = '';
 
 const currencySymbols = { INR: '₹', PKR: '₨', USD: '$', SAR: '﷼', AED: 'د.إ' };
 const exchangeRates = { INR: 83, PKR: 280, USD: 1, SAR: 3.75, AED: 3.67 };
@@ -879,19 +880,29 @@ async function loadAdminProductsFromCloud() {
 
 // Cloud sync for custom products (admin products)
 async function saveCustomProductsToCloud(customProducts) {
-    if (!isCloudSyncEnabled()) return;
+    if (!isCloudSyncEnabled()) {
+        lastCustomProductsSyncError = 'Cloud sync not configured.';
+        return false;
+    }
+    lastCustomProductsSyncError = '';
     try {
         if (cloudSession?.idToken) {
             await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
-            return;
+            return true;
         }
         await saveAdminProductsToCloud(customProducts);
+        return true;
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
+        lastCustomProductsSyncError = String(error?.message || 'Cloud sync failed.');
         try {
             await saveAdminProductsToCloud(customProducts);
+            lastCustomProductsSyncError = '';
+            return true;
         } catch (fallbackError) {
             console.warn('Cloud custom products fallback sync failed:', fallbackError.message);
+            lastCustomProductsSyncError = String(fallbackError?.message || lastCustomProductsSyncError || 'Cloud sync failed.');
+            return false;
         }
     }
 }
@@ -999,31 +1010,45 @@ function loadCustomProducts() {
     customProductsLoaded = true;
 }
 
-function addAdminProduct(rawProduct) {
+async function addAdminProduct(rawProduct) {
     const newProduct = normalizeCustomProduct({ ...rawProduct, id: Date.now() });
     const customProducts = getStoredCustomProducts();
     customProducts.unshift(newProduct);
     saveStoredCustomProducts(customProducts);
     products.push(newProduct);
-    saveCustomProductsToCloud(customProducts);
+    const synced = await saveCustomProductsToCloud(customProducts);
     if (typeof renderProducts === 'function') renderProducts();
-    return newProduct;
+    return {
+        product: newProduct,
+        synced: Boolean(synced),
+        error: lastCustomProductsSyncError || ''
+    };
 }
 
 async function saveAdminProductsToCloud(products) {
     if (!isCloudSyncEnabled()) return;
-    try {
-        const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
-        if (baseUrl) {
-            await fetch(`${baseUrl}/adminProducts.json`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(products)
-            });
-        }
-    } catch (e) { 
-        console.warn('Cloud save failed:', e); 
+    const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
+    if (!baseUrl) throw new Error('Realtime Database URL missing.');
+
+    const response = await fetch(`${baseUrl}/adminProducts.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(products)
+    });
+    if (!response.ok) {
+        let reason = `Cloud save failed (${response.status})`;
+        try {
+            const text = await response.text();
+            const parsed = text ? safeJSONParse(text, null) : null;
+            if (parsed?.error) {
+                reason = typeof parsed.error === 'string' ? parsed.error : (parsed.error.message || reason);
+            } else if (text) {
+                reason = text;
+            }
+        } catch (e) {}
+        throw new Error(reason);
     }
+    return true;
 }
 
 

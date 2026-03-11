@@ -264,8 +264,13 @@
                     badge: 'new'
                 };
 
-                window.addAdminProduct(productData);
-                showToast('Product added successfully!');
+                const result = await window.addAdminProduct(productData);
+                if (result && result.synced) {
+                    showToast('Product added and synced successfully!');
+                } else {
+                    const reason = (result && result.error) ? ` (${result.error})` : '';
+                    showToast(`Product added locally, cloud sync failed${reason}`, 'error');
+                }
                 form.reset();
                 document.getElementById('adminCategory').value = 'Closed Abaya';
                 document.getElementById('adminSizes').value = 'S,M,L,XL';
