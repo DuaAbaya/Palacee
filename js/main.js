@@ -915,33 +915,32 @@ async function syncCustomProductsFromCloud() {
     try {
         const cloudProducts = await loadCustomProductsFromCloud();
         if (cloudProducts && Array.isArray(cloudProducts)) {
+            const normalizedCloudProducts = cloudProducts.map(normalizeCustomProduct);
             const localProducts = getStoredCustomProducts();
-            console.log('Cloud sync - cloud products:', cloudProducts.length, 'local products:', localProducts.length);
-            
-            // Merge: add cloud products that don't exist locally AND are not hidden
+            console.log('Cloud sync - cloud products:', normalizedCloudProducts.length, 'local products:', localProducts.length);
+
+            // Cloud is the source of truth for admin custom products.
+            // Keep hidden filtering for storefront rendering only.
             const hiddenIds = getHiddenProductIds ? getHiddenProductIds() : [];
-            cloudProducts.forEach(cp => {
-                const isHidden = hiddenIds.includes(Number(cp.id));
-                const exists = localProducts.find(lp => Number(lp.id) === Number(cp.id));
-                
-                if (!exists && !isHidden) {
-                    console.log('Adding from cloud:', cp.id);
-                    localProducts.push(cp);
-                } else if (isHidden) {
-                    console.log('Skipping hidden product from cloud:', cp.id);
+            const visibleCloudProducts = normalizedCloudProducts.filter(cp => !hiddenIds.includes(Number(cp.id)));
+
+            // Replace local custom product cache so deletes propagate across devices.
+            saveStoredCustomProducts(normalizedCloudProducts);
+
+            // Replace custom products in runtime list.
+            for (let i = products.length - 1; i >= 0; i -= 1) {
+                if (products[i] && products[i].isCustom) {
+                    products.splice(i, 1);
                 }
-            });
-            
-            // Save merged products locally
-            saveStoredCustomProducts(localProducts);
-            // Also add to the products array
-            localProducts.forEach(product => {
+            }
+            visibleCloudProducts.forEach(product => {
                 if (!products.find(p => Number(p.id) === Number(product.id))) {
                     products.push(product);
                 }
             });
-            
-            console.log('Cloud sync complete - final local products:', localProducts.length);
+
+            customProductsLoaded = true;
+            console.log('Cloud sync complete - final local products:', normalizedCloudProducts.length);
 
             // Re-render pages if cloud sync arrived after initial paint.
             if (typeof renderProducts === 'function') {
