@@ -572,8 +572,10 @@ function saveOrderForUser(order, userId = getCurrentUserId()) {
 }
 
 async function registerAccount(payload) {
-    if (isCloudSyncEnabled()) {
+    const hasCloudAuth = Boolean(CLOUD_SYNC_CONFIG.enabled && CLOUD_SYNC_CONFIG.firebaseApiKey);
+    if (hasCloudAuth) {
         try {
+            cloudSyncTemporarilyDisabled = false;
             const email = normalizeEmail(payload.email);
             if (!email) return { ok: false, message: 'Email is required.' };
 
@@ -634,8 +636,10 @@ async function registerAccount(payload) {
 }
 
 async function loginAccount(email, password) {
-    if (isCloudSyncEnabled()) {
+    const hasCloudAuth = Boolean(CLOUD_SYNC_CONFIG.enabled && CLOUD_SYNC_CONFIG.firebaseApiKey);
+    if (hasCloudAuth) {
         try {
+            cloudSyncTemporarilyDisabled = false;
             const auth = await firebaseAuthRequest('accounts:signInWithPassword', {
                 email: normalizeEmail(email), password: String(password || ''), returnSecureToken: true
             });
