@@ -201,6 +201,7 @@ async function ensureCloudSessionForCustomProducts() {
         cloudSyncTemporarilyDisabled = false;
         return true;
     } catch (error) {
+        lastCustomProductsSyncError = String(error?.message || 'Anonymous auth failed.');
         return false;
     }
 }
@@ -915,27 +916,22 @@ async function saveCustomProductsToCloud(customProducts) {
     }
     lastCustomProductsSyncError = '';
     try {
+        if (!cloudSession?.idToken) {
+            const ensured = await ensureCloudSessionForCustomProducts();
+            if (!ensured) {
+                return false;
+            }
+        }
         if (isCloudSyncEnabled() && cloudSession?.idToken) {
             await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
             return true;
         }
-        await saveAdminProductsToCloud(customProducts);
-        return true;
+        lastCustomProductsSyncError = 'Cloud auth session missing.';
+        return false;
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
         lastCustomProductsSyncError = String(error?.message || 'Cloud sync failed.');
-        if (isPermissionDeniedError(lastCustomProductsSyncError)) {
-            const ensured = await ensureCloudSessionForCustomProducts();
-            if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
-                try {
-                    await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
-                    lastCustomProductsSyncError = '';
-                    return true;
-                } catch (authError) {
-                    lastCustomProductsSyncError = String(authError?.message || lastCustomProductsSyncError || 'Cloud sync failed.');
-                }
-            }
-        }
+        if (isPermissionDeniedError(lastCustomProductsSyncError)) return false;
         try {
             await saveAdminProductsToCloud(customProducts);
             lastCustomProductsSyncError = '';
