@@ -918,16 +918,14 @@ async function saveCustomProductsToCloud(customProducts) {
     try {
         if (!cloudSession?.idToken) {
             const ensured = await ensureCloudSessionForCustomProducts();
-            if (!ensured) {
-                return false;
+            if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
+                await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
+                return true;
             }
         }
-        if (isCloudSyncEnabled() && cloudSession?.idToken) {
-            await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
-            return true;
-        }
-        lastCustomProductsSyncError = 'Cloud auth session missing.';
-        return false;
+        // Fallback for open DB rules (e.g. adminProducts .write=true).
+        await saveAdminProductsToCloud(customProducts);
+        return true;
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
         lastCustomProductsSyncError = String(error?.message || 'Cloud sync failed.');
