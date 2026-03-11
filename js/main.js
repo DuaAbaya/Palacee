@@ -881,19 +881,32 @@ async function loadAdminProductsFromCloud() {
 async function saveCustomProductsToCloud(customProducts) {
     if (!isCloudSyncEnabled()) return;
     try {
-        await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
+        if (cloudSession?.idToken) {
+            await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
+            return;
+        }
+        await saveAdminProductsToCloud(customProducts);
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
+        try {
+            await saveAdminProductsToCloud(customProducts);
+        } catch (fallbackError) {
+            console.warn('Cloud custom products fallback sync failed:', fallbackError.message);
+        }
     }
 }
 
 async function loadCustomProductsFromCloud() {
     if (!isCloudSyncEnabled()) return null;
     try {
-        return await firebaseDbRequest('/adminProducts', 'GET');
+        if (cloudSession?.idToken) {
+            const data = await firebaseDbRequest('/adminProducts', 'GET');
+            if (Array.isArray(data)) return data;
+        }
+        return await loadAdminProductsFromCloud();
     } catch (error) {
         console.warn('Cloud custom products load failed:', error.message);
-        return null;
+        return await loadAdminProductsFromCloud();
     }
 }
 
@@ -929,6 +942,14 @@ async function syncCustomProductsFromCloud() {
             });
             
             console.log('Cloud sync complete - final local products:', localProducts.length);
+
+            // Re-render pages if cloud sync arrived after initial paint.
+            if (typeof renderProducts === 'function') {
+                try { renderProducts(); } catch (e) { console.error('Error rendering products after cloud sync:', e); }
+            }
+            if (typeof window.refreshHomeProductSlider === 'function') {
+                try { window.refreshHomeProductSlider(); } catch (e) { console.error('Error refreshing slider after cloud sync:', e); }
+            }
         }
     } catch (error) {
         console.warn('Custom products cloud sync error:', error.message);
