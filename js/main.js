@@ -1136,24 +1136,31 @@ async function saveAdminProductsToCloud(products) {
 
 
 
-function removeAdminProduct(id) {
-    const targetId = Number(id);
-    if (!Number.isFinite(targetId) || targetId <= 0) {
-        console.warn('Invalid product id for delete:', id);
-        return false;
-    }
+function removeAdminProduct(id, fallbackIndex = null) {
+    const rawId = String(id ?? '').trim();
+    const targetId = Number(rawId);
+    const hasNumericId = Number.isFinite(targetId) && targetId > 0;
     let customProducts = getStoredCustomProducts();
     const originalLength = customProducts.length;
-    const filtered = customProducts.filter(p => Number(p.id) !== targetId);
+    let filtered = customProducts;
+
+    if (hasNumericId) {
+        filtered = customProducts.filter(p => Number(p.id) !== targetId);
+    } else if (rawId) {
+        filtered = customProducts.filter(p => String(p.id ?? '').trim() !== rawId);
+    }
+    if (filtered.length === originalLength && Number.isInteger(fallbackIndex) && fallbackIndex >= 0 && fallbackIndex < originalLength) {
+        filtered = customProducts.filter((_, index) => index !== fallbackIndex);
+    }
     
     // Check if product was actually removed
     if (filtered.length === originalLength) {
         // Product not found
-        console.warn('Product not found:', targetId);
+        console.warn('Product not found:', { id: rawId, numericId: targetId, fallbackIndex, originalLength });
         return false;
     }
     
-    console.log('Removing admin product ID:', targetId);
+    console.log('Removing admin product ID:', hasNumericId ? targetId : rawId);
     console.log('Before removal - count:', originalLength);
     console.log('After removal - count:', filtered.length);
     

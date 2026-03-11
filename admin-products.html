@@ -290,7 +290,7 @@
                 return;
             }
 
-            list.innerHTML = customProducts.map(product => `
+            list.innerHTML = customProducts.map((product, index) => `
                 <div class="admin-product-row">
                     <img src="${product.image}" alt="${product.name}">
                     <div>
@@ -299,14 +299,15 @@
                         <div>Price: INR ${Number((Number(product.price || 0) * INR_PER_USD).toFixed(2))}</div>
                         <div style="color: ${product.isFeatured ? '#2ecc71' : '#999'}">Featured: ${product.isFeatured ? '✓ Yes' : 'No'}</div>
                     </div>
-                    <button type="button" class="btn btn-secondary" data-remove-id="${product.id}">Delete</button>
+                    <button type="button" class="btn btn-secondary" data-remove-id="${product.id}" data-remove-index="${index}">Delete</button>
                 </div>
             `).join('');
 
             list.querySelectorAll('[data-remove-id]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const id = Number(btn.dataset.removeId);
-                    if (!window.removeAdminProduct(id)) {
+                    const rawId = btn.dataset.removeId;
+                    const removeIndex = Number(btn.dataset.removeIndex);
+                    if (!window.removeAdminProduct(rawId, Number.isFinite(removeIndex) ? removeIndex : null)) {
                         showToast('Unable to delete product', 'error');
                         return;
                     }
@@ -318,5 +319,7 @@
     </script>
 </body>
 </html>
+
+
 
 
