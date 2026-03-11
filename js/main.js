@@ -1043,7 +1043,26 @@ async function syncCustomProductsFromCloud() {
 function getStoredCustomProducts() {
     try {
         const data = localStorage.getItem(CUSTOM_PRODUCTS_KEY);
-        return data ? JSON.parse(data) : [];
+        const parsed = data ? JSON.parse(data) : [];
+        if (!Array.isArray(parsed)) return [];
+
+        // Repair legacy/broken entries so delete operations always have a valid numeric ID.
+        const baseId = Date.now();
+        let changed = false;
+        const normalized = parsed.map((item, index) => {
+            const currentId = Number(item && item.id);
+            const stableId = Number.isFinite(currentId) && currentId > 0 ? currentId : (baseId + index);
+            if (!Number.isFinite(currentId) || currentId <= 0) changed = true;
+
+            const next = normalizeCustomProduct({ ...(item || {}), id: stableId });
+            if (!item || item.isCustom !== true || String(item.id) !== String(next.id)) changed = true;
+            return next;
+        });
+
+        if (changed) {
+            saveStoredCustomProducts(normalized);
+        }
+        return normalized;
     } catch (e) {
         console.warn('Failed to get stored custom products:', e);
         return [];
@@ -1119,6 +1138,10 @@ async function saveAdminProductsToCloud(products) {
 
 function removeAdminProduct(id) {
     const targetId = Number(id);
+    if (!Number.isFinite(targetId) || targetId <= 0) {
+        console.warn('Invalid product id for delete:', id);
+        return false;
+    }
     let customProducts = getStoredCustomProducts();
     const originalLength = customProducts.length;
     const filtered = customProducts.filter(p => Number(p.id) !== targetId);
