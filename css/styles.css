@@ -464,6 +464,30 @@ p {
     gap: 25px;
 }
 
+.mobile-menu-icons {
+    display: none;
+}
+
+.mobile-menu-icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 92px;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-light);
+    border-radius: 999px;
+    font-size: 0.9rem;
+    background: transparent;
+    color: var(--primary-black);
+    cursor: pointer;
+}
+
+.mobile-menu-icon-link:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
 .mobile-menu .navbar-link {
     font-size: 1.1rem;
 }
@@ -2802,6 +2826,13 @@ body.admin-mode .product-actions {
     
     .navbar-toggle {
         display: block;
+    }
+
+    .mobile-menu-icons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 6px 0 24px;
     }
     
     .hero-title {

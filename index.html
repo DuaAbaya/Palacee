@@ -52,12 +52,14 @@
                             <option value="en">English</option><option value="ur">Urdu</option><option value="hi">Hindi</option>
                         </select>
                     </div>
+                </div>
                 <button class="navbar-icon search-toggle"><i class="fas fa-search"></i></button>
                 <button class="navbar-icon theme-toggle" onclick="toggleTheme()">&#127769;</button>
                 <a href="account.html" class="navbar-icon"><i class="fas fa-user"></i></a>
                 <a href="cart.html" class="navbar-icon"><i class="fas fa-shopping-bag"></i><span class="cart-count">0</span></a>
-                <button class="navbar-toggle"><i class="fas fa-bars"></i></button>
+                <button class="navbar-toggle" aria-label="Open menu"><i class="fas fa-bars"></i></button>
             </div>
+        </div>
         <div class="search-bar">
             <form action="shop.html">
                 <input type="text" placeholder="Search for abayas...">
@@ -67,6 +69,11 @@
     </nav>
     <div class="mobile-menu">
         <button class="mobile-menu-close"><i class="fas fa-times"></i></button>
+        <div class="mobile-menu-icons">
+            <a href="account.html" class="mobile-menu-icon-link"><i class="fas fa-user"></i><span>Account</span></a>
+            <a href="cart.html" class="mobile-menu-icon-link"><i class="fas fa-shopping-bag"></i><span>Cart</span></a>
+            <button class="mobile-menu-icon-link theme-toggle" onclick="toggleTheme()"><i class="fas fa-moon"></i><span>Theme</span></button>
+        </div>
         <ul>
             <li><a href="index.html" class="navbar-link">Home</a></li>
             <li><a href="shop.html" class="navbar-link">Shop</a></li>
