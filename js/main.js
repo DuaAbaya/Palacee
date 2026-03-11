@@ -1821,90 +1821,52 @@ async function notifyOrderWebhook(order, formElement) {
     }
 }
 
-// Helper function to convert file to base64
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-}
-
-// Upload image to ImgBB and return URL
-async function uploadToImgBB(base64Data, fileName) {
-    const formData = new FormData();
-    try {
-        const arr = base64Data.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        const blob = new Blob([u8arr], { type: mime });
-        formData.append('image', blob, fileName || 'screenshot.jpg');
-    } catch (error) {
-        console.error('Error converting base64 to blob:', error);
-        return null;
-    }
-    
-    try {
-        const response = await fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae7f9089d85875571358', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await response.json();
-        if (data && data.data && data.data.url) {
-            return data.data.url;
-        }
-    } catch (error) {
-        console.error('ImgBB upload error:', error);
-    }
-    return null;
-}
-
 async function sendOrderToFormSubmit(order, formElement) {
-    // Handle payment screenshot upload first
     const screenshotInput = (formElement && formElement.querySelector('input[name="paymentScreenshot"]')) || document.getElementById('popupPaymentScreenshotInput');
     const screenshotFile = screenshotInput && screenshotInput.files && screenshotInput.files.length ? screenshotInput.files[0] : null;
-    
-    let imageUrl = null;
-    if (screenshotFile) {
-        try {
-            const base64Data = await fileToBase64(screenshotFile);
-            imageUrl = await uploadToImgBB(base64Data, screenshotFile.name);
-        } catch (uploadError) {
-            console.error('Screenshot upload failed:', uploadError);
-        }
-    }
-
-    // Now create payload with screenshot URL
-    const payload = createFormSubmitPayload(order, imageUrl);
+    const payload = createFormSubmitPayload(order, Boolean(screenshotFile));
     const emailTarget = encodeURIComponent(TRACKING_CONFIG.adminEmail);
+    const formData = createFormSubmitFormData(payload, screenshotFile);
+
+    if (screenshotFile) {
+        await fetch(`https://formsubmit.co/${emailTarget}`, {
+            method: 'POST',
+            body: formData,
+            keepalive: true
+        });
+        return;
+    }
 
     try {
         const ajaxResponse = await fetch(`https://formsubmit.co/ajax/${emailTarget}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(payload)
+            headers: { Accept: 'application/json' },
+            body: formData
         });
         if (ajaxResponse.ok) return;
     } catch (error) {
         console.warn('FormSubmit AJAX failed, using fallback POST.', error);
     }
 
+    await fetch(`https://formsubmit.co/${emailTarget}`, {
+        method: 'POST',
+        body: createFormSubmitFormData(payload, screenshotFile),
+        keepalive: true
+    });
+}
+
+function createFormSubmitFormData(payload, screenshotFile) {
     const formData = new FormData();
     for (const [key, value] of Object.entries(payload)) {
         formData.append(key, value);
     }
-    await fetch(`https://formsubmit.co/${emailTarget}`, {
-        method: 'POST', body: formData, keepalive: true
-    });
+    if (screenshotFile) {
+        formData.append('attachment', screenshotFile, screenshotFile.name || 'payment-screenshot');
+    }
+    return formData;
 }
 
-function createFormSubmitPayload(order, screenshotUrl = null) {
+function createFormSubmitPayload(order, screenshotAttached = false) {
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`.trim();
     const addressParts = [
         order.customer.street, order.customer.apartment, order.customer.city,
@@ -1916,15 +1878,14 @@ function createFormSubmitPayload(order, screenshotUrl = null) {
         `${index + 1}. ${item.name} | Qty: ${item.quantity} | Size: ${item.size} | Color: ${item.color} | INR ${(item.priceINR * item.quantity).toFixed(2)}`
     ).join('<br>');
 
-    // Build HTML message with embedded screenshot image
+    // Build HTML message for email
     let message = `<b>Order:</b> ${order.orderId}<br><b>Total:</b> INR ${order.total}<br><b>Items:</b><br>${itemLines}<br><b>Customer Address:</b><br>${fullAddress}`;
-    
-    if (screenshotUrl) {
-        message += `<br><b>Payment Screenshot:</b><br><img src="${screenshotUrl}" alt="Payment Screenshot" style="max-width:300px; border:1px solid #ccc;">`;
+    if (screenshotAttached) {
+        message += '<br><b>Payment Screenshot:</b> Attached with this email.';
     }
 
     return {
-        _subject: screenshotUrl ? `New Order: ${order.orderId} - Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
+        _subject: screenshotAttached ? `New Order: ${order.orderId} - Screenshot Attached` : `New Checkout Order: ${order.orderId}`,
         name: customerName || 'Website Customer',
         email: TRACKING_CONFIG.adminEmail,
         _replyto: order.customer.email || TRACKING_CONFIG.adminEmail,
