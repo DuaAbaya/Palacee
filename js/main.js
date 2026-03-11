@@ -69,6 +69,7 @@ let currentTheme = localStorage.getItem('theme') || 'light';
 const CUSTOM_PRODUCTS_KEY = 'customProducts';
 let customProductsLoaded = false;
 let lastCustomProductsSyncError = '';
+const BLOCKED_PRODUCT_NAMES = new Set(['ambroidery nakab']);
 
 const currencySymbols = { INR: '₹', PKR: '₨', USD: '$', SAR: '﷼', AED: 'د.إ' };
 const exchangeRates = { INR: 83, PKR: 280, USD: 1, SAR: 3.75, AED: 3.67 };
@@ -845,6 +846,7 @@ function setupHiddenAdminAccess() {
 // ============================================
 // CUSTOM PRODUCTS
 // ============================================
+
 function normalizeCustomProduct(rawProduct) {
     const fallbackImage = 'images/abaya_full_1_9x16.png';
     const parsedPrice = Number(rawProduct.price || 0);
@@ -872,6 +874,12 @@ function normalizeCustomProduct(rawProduct) {
     };
 }
 
+
+function isBlockedProductName(name) {
+    const normalized = String(name || '').trim().toLowerCase();
+    return BLOCKED_PRODUCT_NAMES.has(normalized);
+}
+
 async function loadAdminProductsFromCloud() {
     if (!isCustomProductsCloudSyncEnabled()) return null;
     try {
@@ -894,6 +902,7 @@ async function saveCustomProductsToCloud(customProducts) {
         return false;
     }
     lastCustomProductsSyncError = '';
+    const safeProducts = (Array.isArray(customProducts) ? customProducts : []).filter(product => !isBlockedProductName(product?.name));
     try {
         // Custom product sync should not remain blocked by temporary user-sync auth failures.
         cloudSyncTemporarilyDisabled = false;
@@ -908,19 +917,19 @@ async function saveCustomProductsToCloud(customProducts) {
             }
         }
         if (isCloudSyncEnabled() && cloudSession?.idToken) {
-            await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
+            await firebaseDbRequest('/adminProducts', 'PUT', safeProducts);
             return true;
         }
 
         // Final fallback for open DB rules (e.g. adminProducts .write=true).
-        await saveAdminProductsToCloud(customProducts);
+        await saveAdminProductsToCloud(safeProducts);
         return true;
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
         lastCustomProductsSyncError = String(error?.message || 'Cloud sync failed.');
         if (isPermissionDeniedError(lastCustomProductsSyncError)) return false;
         try {
-            await saveAdminProductsToCloud(customProducts);
+            await saveAdminProductsToCloud(safeProducts);
             lastCustomProductsSyncError = '';
             return true;
         } catch (fallbackError) {
@@ -977,7 +986,9 @@ async function syncCustomProductsFromCloud() {
     try {
         const cloudProducts = await loadCustomProductsFromCloud();
         if (Array.isArray(cloudProducts)) {
-            const normalizedCloudProducts = cloudProducts.map(normalizeCustomProduct);
+            const normalizedCloudProducts = cloudProducts
+                .map(normalizeCustomProduct)
+                .filter(product => !isBlockedProductName(product?.name));
             const localProducts = getStoredCustomProducts();
             console.log('Cloud sync - cloud products:', normalizedCloudProducts.length, 'local products:', localProducts.length);
 
@@ -988,6 +999,9 @@ async function syncCustomProductsFromCloud() {
 
             // Replace local custom product cache so deletes propagate across devices.
             saveStoredCustomProducts(normalizedCloudProducts);
+            if (cloudProducts.length !== normalizedCloudProducts.length) {
+                saveCustomProductsToCloud(normalizedCloudProducts);
+            }
 
             // Replace custom products in runtime list.
             for (let i = products.length - 1; i >= 0; i -= 1) {
@@ -1036,7 +1050,7 @@ function getStoredCustomProducts() {
             const next = normalizeCustomProduct({ ...(item || {}), id: stableId });
             if (!item || item.isCustom !== true || String(item.id) !== String(next.id)) changed = true;
             return next;
-        });
+        }).filter(product => !isBlockedProductName(product?.name));
 
         if (changed) {
             saveStoredCustomProducts(normalized);
@@ -1074,6 +1088,9 @@ function loadCustomProducts() {
 
 async function addAdminProduct(rawProduct) {
     const newProduct = normalizeCustomProduct({ ...rawProduct, id: Date.now() });
+    if (isBlockedProductName(newProduct.name)) {
+        return { product: null, synced: false, error: 'This product is blocked.' };
+    }
     const customProducts = getStoredCustomProducts();
     customProducts.unshift(newProduct);
     saveStoredCustomProducts(customProducts);
@@ -2277,4 +2294,5 @@ window.isProductHidden = isProductHidden;
 window.getHiddenProductIds = getHiddenProductIds;
 window.isAdminModeEnabled = isAdminModeEnabled;
 window.setAdminModeEnabled = setAdminModeEnabled;
+
 
