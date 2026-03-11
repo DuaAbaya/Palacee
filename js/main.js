@@ -181,6 +181,30 @@ function isCustomProductsCloudSyncEnabled() {
     return Boolean(CLOUD_SYNC_CONFIG.enabled && hasDbBase);
 }
 
+function isPermissionDeniedError(message) {
+    const text = String(message || '').toLowerCase();
+    return text.includes('permission denied') || text.includes('unauthorized') || text.includes('401') || text.includes('403');
+}
+
+async function ensureCloudSessionForCustomProducts() {
+    if (isCloudSyncEnabled() && cloudSession?.idToken) return true;
+    if (!CLOUD_SYNC_CONFIG.enabled || !CLOUD_SYNC_CONFIG.firebaseApiKey) return false;
+    try {
+        const authData = await firebaseAuthRequest('accounts:signUp', { returnSecureToken: true });
+        setCloudSession({
+            idToken: authData.idToken,
+            refreshToken: authData.refreshToken,
+            localId: authData.localId,
+            email: '',
+            isAnonymous: true
+        });
+        cloudSyncTemporarilyDisabled = false;
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
 function mapCloudAuthError(message) {
     const code = String(message || '').trim();
     if (code === 'NETWORK_REQUEST_FAILED' || code === 'Failed to fetch') {
@@ -900,6 +924,18 @@ async function saveCustomProductsToCloud(customProducts) {
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
         lastCustomProductsSyncError = String(error?.message || 'Cloud sync failed.');
+        if (isPermissionDeniedError(lastCustomProductsSyncError)) {
+            const ensured = await ensureCloudSessionForCustomProducts();
+            if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
+                try {
+                    await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
+                    lastCustomProductsSyncError = '';
+                    return true;
+                } catch (authError) {
+                    lastCustomProductsSyncError = String(authError?.message || lastCustomProductsSyncError || 'Cloud sync failed.');
+                }
+            }
+        }
         try {
             await saveAdminProductsToCloud(customProducts);
             lastCustomProductsSyncError = '';
@@ -926,9 +962,27 @@ async function loadCustomProductsFromCloud() {
             if (normalized) return normalized;
         }
         const fallbackData = await loadAdminProductsFromCloud();
-        return normalizeCloudProductsPayload(fallbackData);
+        const fallbackNormalized = normalizeCloudProductsPayload(fallbackData);
+        if (fallbackNormalized) return fallbackNormalized;
+
+        const ensured = await ensureCloudSessionForCustomProducts();
+        if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
+            const authedData = await firebaseDbRequest('/adminProducts', 'GET');
+            return normalizeCloudProductsPayload(authedData);
+        }
+        return null;
     } catch (error) {
         console.warn('Cloud custom products load failed:', error.message);
+        try {
+            const ensured = await ensureCloudSessionForCustomProducts();
+            if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
+                const authedData = await firebaseDbRequest('/adminProducts', 'GET');
+                const authedNormalized = normalizeCloudProductsPayload(authedData);
+                if (authedNormalized) return authedNormalized;
+            }
+        } catch (authLoadError) {
+            console.warn('Cloud custom products authenticated load failed:', authLoadError.message);
+        }
         const fallbackData = await loadAdminProductsFromCloud();
         return normalizeCloudProductsPayload(fallbackData);
     }
