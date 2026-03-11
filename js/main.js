@@ -1140,25 +1140,27 @@ function removeAdminProduct(id, fallbackIndex = null) {
     const rawId = String(id ?? '').trim();
     const targetId = Number(rawId);
     const hasNumericId = Number.isFinite(targetId) && targetId > 0;
-    let customProducts = getStoredCustomProducts();
+    const customProducts = getStoredCustomProducts();
     const originalLength = customProducts.length;
-    let filtered = customProducts;
+    let removeIndex = -1;
 
     if (hasNumericId) {
-        filtered = customProducts.filter(p => Number(p.id) !== targetId);
+        removeIndex = customProducts.findIndex(p => Number(p.id) === targetId);
     } else if (rawId) {
-        filtered = customProducts.filter(p => String(p.id ?? '').trim() !== rawId);
+        removeIndex = customProducts.findIndex(p => String(p.id ?? '').trim() === rawId);
     }
-    if (filtered.length === originalLength && Number.isInteger(fallbackIndex) && fallbackIndex >= 0 && fallbackIndex < originalLength) {
-        filtered = customProducts.filter((_, index) => index !== fallbackIndex);
+    if (removeIndex < 0 && Number.isInteger(fallbackIndex) && fallbackIndex >= 0 && fallbackIndex < originalLength) {
+        removeIndex = fallbackIndex;
     }
     
     // Check if product was actually removed
-    if (filtered.length === originalLength) {
+    if (removeIndex < 0) {
         // Product not found
         console.warn('Product not found:', { id: rawId, numericId: targetId, fallbackIndex, originalLength });
         return false;
     }
+    const removed = customProducts[removeIndex] || null;
+    const filtered = customProducts.filter((_, index) => index !== removeIndex);
     
     console.log('Removing admin product ID:', hasNumericId ? targetId : rawId);
     console.log('Before removal - count:', originalLength);
@@ -1174,7 +1176,13 @@ function removeAdminProduct(id, fallbackIndex = null) {
     
     // Remove from products array
     const beforeFilter = products.length;
-    products = products.filter(p => Number(p.id) !== targetId);
+    const removedId = Number(removed?.id);
+    for (let i = products.length - 1; i >= 0; i -= 1) {
+        const runtimeId = Number(products[i]?.id);
+        if ((Number.isFinite(removedId) && runtimeId === removedId) || (products[i]?.isCustom && String(products[i]?.name || '') === String(removed?.name || ''))) {
+            products.splice(i, 1);
+        }
+    }
     console.log('Memory - before:', beforeFilter, 'after:', products.length);
     
     // Sync with cloud
@@ -1204,8 +1212,11 @@ function removeAllAdminProducts() {
     saveStoredCustomProducts([]);
     
     // Remove all custom products from products array
-    const customIds = customProducts.map(p => Number(p.id));
-    products = products.filter(p => !customIds.includes(Number(p.id)));
+    for (let i = products.length - 1; i >= 0; i -= 1) {
+        if (products[i] && products[i].isCustom) {
+            products.splice(i, 1);
+        }
+    }
     
     // Sync to cloud
     saveCustomProductsToCloud([]);
