@@ -5,28 +5,7 @@
 // ============================================
 // PRODUCT DATA
 // ============================================
-const products = [
-    {
-        id: 1,
-        name: "Ambroidery Nakab",
-        category: "Closed Abaya",
-        price: 14.46,
-        originalPrice: 18.07,
-        description: "Elegant black ambroidery nakab abaya with premium golden detailing. Comfortable flowy fabric, ideal for daily wear and occasions.",
-        image: "images/abaya_full_1_9x16.png",
-        images: [
-            "images/abaya_full_1_9x16.png",
-            "images/abaya_full_2_9x16.png",
-            "images/abaya_full_3_9x16.png"
-        ],
-        sizes: ["S", "M", "L", "XL", "XXL"],
-        colors: ["Black"],
-        rating: 4.8,
-        reviews: 32,
-        fabric: "Premium Nidha",
-        badge: "new"
-    }
-];
+const products = [];
 
 // ============================================
 // TRANSLATIONS
