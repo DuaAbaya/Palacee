@@ -916,14 +916,24 @@ async function saveCustomProductsToCloud(customProducts) {
     }
     lastCustomProductsSyncError = '';
     try {
+        // Custom product sync should not remain blocked by temporary user-sync auth failures.
+        cloudSyncTemporarilyDisabled = false;
+
         if (!cloudSession?.idToken) {
             const ensured = await ensureCloudSessionForCustomProducts();
-            if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
-                await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
-                return true;
+            if (!ensured) {
+                if (!lastCustomProductsSyncError) {
+                    lastCustomProductsSyncError = 'Anonymous auth failed. Enable Firebase Anonymous sign-in.';
+                }
+                return false;
             }
         }
-        // Fallback for open DB rules (e.g. adminProducts .write=true).
+        if (isCloudSyncEnabled() && cloudSession?.idToken) {
+            await firebaseDbRequest('/adminProducts', 'PUT', customProducts);
+            return true;
+        }
+
+        // Final fallback for open DB rules (e.g. adminProducts .write=true).
         await saveAdminProductsToCloud(customProducts);
         return true;
     } catch (error) {
@@ -944,6 +954,7 @@ async function saveCustomProductsToCloud(customProducts) {
 
 async function loadCustomProductsFromCloud() {
     if (!isCustomProductsCloudSyncEnabled()) return null;
+    cloudSyncTemporarilyDisabled = false;
     const normalizeCloudProductsPayload = (payload) => {
         if (Array.isArray(payload)) return payload;
         if (payload && typeof payload === 'object') return Object.values(payload);
