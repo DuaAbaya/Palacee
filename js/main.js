@@ -692,6 +692,67 @@ async function loginAccount(email, password) {
             
             return { ok: true, user: currentUser };
         } catch (error) {
+            const code = String(error?.message || '').trim();
+            const normalizedEmail = normalizeEmail(email);
+            const localUsers = getUsers();
+            const matchingLocalUser = localUsers.find(item =>
+                normalizeEmail(item.email) === normalizedEmail &&
+                String(item.password) === String(password || '')
+            );
+
+            // Auto-migrate old local-only accounts to cloud so same credentials work across devices.
+            if (matchingLocalUser && (code === 'INVALID_LOGIN_CREDENTIALS' || code === 'INVALID_PASSWORD' || code === 'EMAIL_NOT_FOUND')) {
+                try {
+                    const signup = await firebaseAuthRequest('accounts:signUp', {
+                        email: normalizedEmail,
+                        password: String(password || ''),
+                        returnSecureToken: true
+                    });
+
+                    setCloudSession({
+                        localId: signup.localId,
+                        idToken: signup.idToken,
+                        refreshToken: signup.refreshToken,
+                        email: normalizedEmail
+                    });
+
+                    const migratedProfile = {
+                        id: signup.localId,
+                        firstName: String(matchingLocalUser.firstName || '').trim(),
+                        lastName: String(matchingLocalUser.lastName || '').trim(),
+                        email: normalizedEmail,
+                        phone: String(matchingLocalUser.phone || '').trim(),
+                        addresses: normalizeAddressEntries(matchingLocalUser.addresses),
+                        createdAt: matchingLocalUser.createdAt || new Date().toISOString()
+                    };
+
+                    const localCart = safeJSONParse(localStorage.getItem(getScopedKey('cart', matchingLocalUser.id)), []);
+                    const localWishlist = safeJSONParse(localStorage.getItem(getScopedKey('wishlist', matchingLocalUser.id)), []);
+                    const localOrders = safeJSONParse(localStorage.getItem(getScopedKey('orders', matchingLocalUser.id)), []);
+
+                    await saveCloudUserField('profile', migratedProfile);
+                    await saveCloudUserField('cart', Array.isArray(localCart) ? localCart : []);
+                    await saveCloudUserField('wishlist', Array.isArray(localWishlist) ? localWishlist : []);
+                    await saveCloudUserField('orders', Array.isArray(localOrders) ? localOrders : []);
+
+                    currentUser = migratedProfile;
+                    saveProfileCache(currentUser, signup.localId);
+                    localStorage.setItem(AUTH_SESSION_KEY, currentUser.id);
+                    localStorage.setItem(LEGACY_LOGIN_FLAG_KEY, 'true');
+
+                    cart = Array.isArray(localCart) ? localCart : [];
+                    wishlist = Array.isArray(localWishlist) ? localWishlist : [];
+                    saveScopedList('cart', cart);
+                    saveScopedList('wishlist', wishlist);
+                    updateCartCount();
+                    updateWishlistCount();
+
+                    return { ok: true, user: currentUser };
+                } catch (migrationError) {
+                    return { ok: false, message: mapCloudAuthError(migrationError.message) };
+                }
+            }
+
             return { ok: false, message: mapCloudAuthError(error.message) };
         }
     }
@@ -753,6 +814,52 @@ async function requestPasswordReset(email) {
         message: 'Cloud reset is unavailable. Set a new password here.',
         debugCode: 'LOCAL_RESET_REQUIRED'
     };
+}
+
+async function ensureCloudAccountFromCredentials(email, password) {
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPassword = String(password || '');
+    if (!normalizedEmail) return { ok: false, message: 'Please enter a valid email.' };
+    if (normalizedPassword.length < 6) return { ok: false, message: 'Password must be at least 6 characters.' };
+
+    const hasCloudAuth = Boolean(CLOUD_SYNC_CONFIG.enabled && CLOUD_SYNC_CONFIG.firebaseApiKey);
+    if (!hasCloudAuth) return { ok: false, message: 'Cloud auth is not configured.' };
+
+    try {
+        cloudSyncTemporarilyDisabled = false;
+        const signup = await firebaseAuthRequest('accounts:signUp', {
+            email: normalizedEmail,
+            password: normalizedPassword,
+            returnSecureToken: true
+        });
+
+        setCloudSession({
+            localId: signup.localId,
+            idToken: signup.idToken,
+            refreshToken: signup.refreshToken,
+            email: normalizedEmail
+        });
+
+        const localUsers = getUsers();
+        const localUser = localUsers.find(item => normalizeEmail(item.email) === normalizedEmail);
+        const profile = {
+            id: signup.localId,
+            firstName: String(localUser?.firstName || '').trim(),
+            lastName: String(localUser?.lastName || '').trim(),
+            email: normalizedEmail,
+            phone: String(localUser?.phone || '').trim(),
+            addresses: normalizeAddressEntries(localUser?.addresses),
+            createdAt: localUser?.createdAt || new Date().toISOString()
+        };
+
+        await saveCloudUserField('profile', profile);
+        return { ok: true, message: 'Cloud account created. You can now login across devices.' };
+    } catch (error) {
+        if (String(error?.message || '').trim() === 'EMAIL_EXISTS') {
+            return { ok: false, message: 'Cloud account already exists for this email. Please check password or reset it.' };
+        }
+        return { ok: false, message: mapCloudAuthError(error.message) };
+    }
 }
 
 function resetLocalPassword(email, newPassword) {
@@ -2350,6 +2457,7 @@ window.removeAllAdminProducts = removeAllAdminProducts;
 window.registerAccount = registerAccount;
 window.loginAccount = loginAccount;
 window.requestPasswordReset = requestPasswordReset;
+window.ensureCloudAccountFromCredentials = ensureCloudAccountFromCredentials;
 window.resetLocalPassword = resetLocalPassword;
 window.logoutAccount = logoutAccount;
 window.isUserLoggedIn = isUserLoggedIn;

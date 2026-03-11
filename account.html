@@ -232,6 +232,26 @@
             const result = await window.loginAccount(email, password);
 
             if (!result.ok) {
+                const normalized = String(result.message || '').toLowerCase();
+                if (normalized.includes('invalid email or password')) {
+                    const shouldCreate = window.confirm('This account may not be on cloud yet. Create/sync cloud account with this email and password for cross-device login?');
+                    if (shouldCreate && typeof window.ensureCloudAccountFromCredentials === 'function') {
+                        const syncResult = await window.ensureCloudAccountFromCredentials(email, password);
+                        if (!syncResult.ok) {
+                            window.showToast(syncResult.message, 'error');
+                            return;
+                        }
+                        const retry = await window.loginAccount(email, password);
+                        if (!retry.ok) {
+                            window.showToast(retry.message, 'error');
+                            return;
+                        }
+                        e.target.reset();
+                        syncAccountView();
+                        window.showToast('Cloud account synced. Login successful.');
+                        return;
+                    }
+                }
                 window.showToast(result.message, 'error');
                 return;
             }
