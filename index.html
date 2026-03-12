@@ -211,12 +211,10 @@
                 
                 console.log('Initial load - Total products:', window.products.length, 'Available:', allAvailableProducts.length);
                 
-                // Prioritize featured products, then fill with remaining products
-                const featuredProducts = allAvailableProducts.filter(p => p.isFeatured === true);
-                const nonFeaturedProducts = allAvailableProducts.filter(p => p.isFeatured !== true);
-                const featuredItems = [...featuredProducts, ...nonFeaturedProducts].slice(0, 10);
+                // Home slider should only show products explicitly marked as featured.
+                const featuredItems = allAvailableProducts.filter(p => p.isFeatured === true).slice(0, 10);
                 
-                console.log('Featured products:', featuredProducts.length, 'Non-featured:', nonFeaturedProducts.length, 'Showing:', featuredItems.length);
+                console.log('Featured products:', featuredItems.length, 'Showing:', featuredItems.length);
                 
                 track.innerHTML = featuredItems.map(product => createFeaturedProductCard(product)).join('');
                 
@@ -357,10 +355,8 @@
                 
                 console.log('Available products after filtering:', allAvailableProducts.length);
                 
-                // Prioritize featured products, then fill with remaining products
-                const featuredProducts = allAvailableProducts.filter(p => p.isFeatured === true);
-                const nonFeaturedProducts = allAvailableProducts.filter(p => p.isFeatured !== true);
-                const featuredItems = [...featuredProducts, ...nonFeaturedProducts].slice(0, 10);
+                // Home slider should only show products explicitly marked as featured.
+                const featuredItems = allAvailableProducts.filter(p => p.isFeatured === true).slice(0, 10);
                 
                 console.log('Featured items count:', featuredItems.length);
                 console.log('Featured product IDs:', featuredItems.map(p => p.id).join(', '));
