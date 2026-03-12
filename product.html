@@ -290,6 +290,10 @@
             return `productReviews_${productId}`;
         }
 
+        function hasStoredReviews(productId) {
+            return localStorage.getItem(getReviewStorageKey(productId)) !== null;
+        }
+
         function getReviewDirtyKey(productId) {
             return `productReviewsDirty_${productId}`;
         }
@@ -349,8 +353,9 @@
             if (typeof window.loadSharedProductReviews !== 'function') return normalizeReviewList(fallbackReviews);
 
             const localReviews = normalizeReviewList(fallbackReviews);
+            const hasLocalSnapshot = hasStoredReviews(productId);
             if (isReviewDirty(productId)) {
-                return localReviews.length ? localReviews : normalizeReviewList(getDefaultReviews());
+                return localReviews;
             }
             try {
                 const cloudReviews = await window.loadSharedProductReviews(productId);
@@ -360,7 +365,7 @@
                 }
 
                 if (!cloudReviews || (Array.isArray(cloudReviews) && cloudReviews.length === 0)) {
-                    const seed = localReviews.length ? localReviews : getDefaultReviews();
+                    const seed = hasLocalSnapshot ? localReviews : getDefaultReviews();
                     saveProductReviews(productId, seed);
                     if (typeof window.saveSharedProductReviews === 'function') {
                         await window.saveSharedProductReviews(productId, seed);
@@ -371,7 +376,7 @@
                 console.warn('Review sync failed:', error);
             }
 
-            return localReviews.length ? localReviews : normalizeReviewList(getDefaultReviews());
+            return hasLocalSnapshot ? localReviews : normalizeReviewList(getDefaultReviews());
         }
 
         async function persistReviews(productId, reviews) {
@@ -457,8 +462,7 @@
             const adminBtn = document.getElementById('toggleReviewAdminBtn');
             if (!form) return;
 
-            const localReviews = getProductReviews(productId);
-            if (!localReviews.length) {
+            if (!hasStoredReviews(productId)) {
                 saveProductReviews(productId, getDefaultReviews());
             }
 
