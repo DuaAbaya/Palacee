@@ -1105,6 +1105,40 @@ async function saveCustomProductsToCloud(customProducts) {
     }
 }
 
+async function saveSingleAdminProductToCloud(product) {
+    const normalized = normalizeCustomProduct(product || {});
+    const productId = Number(normalized.id);
+    if (!Number.isFinite(productId) || productId <= 0) {
+        lastCustomProductsSyncError = 'Invalid product id for cloud sync.';
+        return false;
+    }
+    if (!isCustomProductsCloudSyncEnabled()) {
+        lastCustomProductsSyncError = 'Cloud sync not configured.';
+        return false;
+    }
+
+    lastCustomProductsSyncError = '';
+    try {
+        cloudSyncTemporarilyDisabled = false;
+        if (!cloudSession?.idToken) {
+            const ensured = await ensureCloudSessionForCustomProducts();
+            if (!ensured || !cloudSession?.idToken) {
+                lastCustomProductsSyncError = mapCloudSyncError(
+                    lastCustomProductsSyncError || 'Anonymous auth failed. Enable Firebase Anonymous sign-in.',
+                    'product sync'
+                );
+                return false;
+            }
+        }
+
+        await firebaseDbRequest(`/adminProducts/${productId}`, 'PUT', normalized);
+        return true;
+    } catch (error) {
+        lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Cloud sync failed.', 'product sync');
+        return false;
+    }
+}
+
 async function loadCustomProductsFromCloud() {
     if (!isCustomProductsCloudSyncEnabled()) return null;
     cloudSyncTemporarilyDisabled = false;
@@ -1373,7 +1407,10 @@ async function addAdminProduct(rawProduct) {
     const savedLocally = saveStoredCustomProducts(customProducts);
     products.push(newProduct);
     let synced = false;
-    if (savedLocally || isCustomProductsCloudSyncEnabled()) {
+    if (savedLocally && isCustomProductsCloudSyncEnabled()) {
+        synced = await saveSingleAdminProductToCloud(newProduct);
+    }
+    if (!synced && (savedLocally || isCustomProductsCloudSyncEnabled())) {
         synced = await saveCustomProductsToCloud(customProducts);
     }
     if (typeof renderProducts === 'function') renderProducts();
