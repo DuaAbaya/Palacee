@@ -184,6 +184,18 @@ function mapCloudSyncError(message, context = 'sync') {
     return raw;
 }
 
+function shouldDisableCloudSyncOnError(message) {
+    const text = String(message || '');
+    const isAuthError = text.includes('Session expired')
+        || text.includes('Cloud access denied')
+        || text.includes('unauthorized')
+        || text.includes('401')
+        || text.includes('403');
+    // Keep admin/custom-product sync available for anonymous cloud sessions.
+    if (cloudSession?.isAnonymous) return false;
+    return isAuthError;
+}
+
 async function ensureCloudSessionForCustomProducts() {
     if (isCloudSyncEnabled() && cloudSession?.idToken) return true;
     if (!CLOUD_SYNC_CONFIG.enabled || !CLOUD_SYNC_CONFIG.firebaseApiKey) return false;
@@ -456,7 +468,7 @@ async function syncStateFromCloud() {
     } catch (error) {
         console.warn('Cloud sync load failed:', error.message);
         // Disable cloud sync on auth errors so they don't interfere with local operations
-        if (error.message && (error.message.includes('Session expired') || error.message.includes('Cloud access denied') || error.message.includes('unauthorized') || error.message.includes('401') || error.message.includes('403'))) {
+        if (shouldDisableCloudSyncOnError(error.message)) {
             cloudSyncTemporarilyDisabled = true;
             console.log('Cloud auth failed, using local data only');
         }
@@ -1819,7 +1831,7 @@ function saveCart() {
                 console.warn('Cloud cart sync failed:', error.message);
                 // Only disable cloud sync on auth errors from user-triggered operations
                 // This prevents the app from getting stuck on stale tokens
-                if (error.message && (error.message.includes('Session expired') || error.message.includes('Cloud access denied') || error.message.includes('401') || error.message.includes('403'))) {
+                if (shouldDisableCloudSyncOnError(error.message)) {
                     cloudSyncTemporarilyDisabled = true;
                     console.log('Cloud auth expired, disabling cloud sync. Please login again.');
                 }
@@ -2110,7 +2122,7 @@ function saveWishlist() {
             .catch(error => {
                 console.warn('Cloud wishlist sync failed:', error.message);
                 // Only disable cloud sync on auth errors from user-triggered operations
-                if (error.message && (error.message.includes('Session expired') || error.message.includes('Cloud access denied') || error.message.includes('401') || error.message.includes('403'))) {
+                if (shouldDisableCloudSyncOnError(error.message)) {
                     cloudSyncTemporarilyDisabled = true;
                     console.log('Cloud auth expired, disabling cloud sync. Please login again.');
                 }
