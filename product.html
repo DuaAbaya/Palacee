@@ -290,6 +290,23 @@
             return `productReviews_${productId}`;
         }
 
+        function normalizeReviewList(input) {
+            if (!Array.isArray(input)) return [];
+            return input.map(review => {
+                if (!review || typeof review !== 'object' || Array.isArray(review)) return null;
+                const name = String(review.name || '').trim();
+                const comment = String(review.comment || '').trim();
+                const rating = Math.max(1, Math.min(5, Number(review.rating) || 5));
+                if (!name || !comment) return null;
+                return {
+                    name,
+                    comment,
+                    rating,
+                    createdAt: String(review.createdAt || new Date().toISOString())
+                };
+            }).filter(Boolean);
+        }
+
         function getDefaultReviews() {
             return [
                 { name: 'Sarah A.', rating: 5, comment: 'Absolutely beautiful! The quality is amazing and fits perfectly.', createdAt: new Date().toISOString() },
@@ -299,17 +316,55 @@
 
         function getProductReviews(productId) {
             const raw = localStorage.getItem(getReviewStorageKey(productId));
-            if (!raw) return getDefaultReviews();
+            if (!raw) return [];
             try {
                 const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed : [];
+                return normalizeReviewList(parsed);
             } catch (error) {
                 return [];
             }
         }
 
         function saveProductReviews(productId, reviews) {
-            localStorage.setItem(getReviewStorageKey(productId), JSON.stringify(reviews));
+            localStorage.setItem(getReviewStorageKey(productId), JSON.stringify(normalizeReviewList(reviews)));
+        }
+
+        async function syncReviewsFromCloud(productId, fallbackReviews = []) {
+            if (typeof window.loadSharedProductReviews !== 'function') return normalizeReviewList(fallbackReviews);
+
+            const localReviews = normalizeReviewList(fallbackReviews);
+            try {
+                const cloudReviews = await window.loadSharedProductReviews(productId);
+                if (Array.isArray(cloudReviews) && cloudReviews.length > 0) {
+                    saveProductReviews(productId, cloudReviews);
+                    return normalizeReviewList(cloudReviews);
+                }
+
+                if (!cloudReviews || (Array.isArray(cloudReviews) && cloudReviews.length === 0)) {
+                    const seed = localReviews.length ? localReviews : getDefaultReviews();
+                    saveProductReviews(productId, seed);
+                    if (typeof window.saveSharedProductReviews === 'function') {
+                        await window.saveSharedProductReviews(productId, seed);
+                    }
+                    return normalizeReviewList(seed);
+                }
+            } catch (error) {
+                console.warn('Review sync failed:', error);
+            }
+
+            return localReviews.length ? localReviews : normalizeReviewList(getDefaultReviews());
+        }
+
+        async function persistReviews(productId, reviews) {
+            const normalized = normalizeReviewList(reviews);
+            saveProductReviews(productId, normalized);
+            if (typeof window.saveSharedProductReviews !== 'function') return { ok: true, cloud: false };
+            try {
+                const result = await window.saveSharedProductReviews(productId, normalized);
+                return { ok: Boolean(result?.ok), cloud: Boolean(result?.ok), error: result?.error || '' };
+            } catch (error) {
+                return { ok: false, cloud: false, error: String(error?.message || 'Cloud sync failed.') };
+            }
         }
 
         function renderProductReviews(productId) {
@@ -354,7 +409,13 @@
             reviews.splice(reviewIndex, 1);
             saveProductReviews(productId, reviews);
             renderProductReviews(productId);
-            showToast('Review deleted');
+            persistReviews(productId, reviews).then(result => {
+                if (result.ok) {
+                    showToast('Review deleted');
+                } else {
+                    showToast(`Review deleted locally, cloud sync failed (${result.error || 'Unknown error'})`, 'error');
+                }
+            });
         }
 
         function setReviewAdminMode(enabled) {
@@ -368,12 +429,13 @@
             renderProductReviews(currentProductId);
         }
 
-        function initializeProductReviews(productId) {
+        async function initializeProductReviews(productId) {
             const form = document.getElementById('productReviewForm');
             const adminBtn = document.getElementById('toggleReviewAdminBtn');
             if (!form) return;
 
-            if (!localStorage.getItem(getReviewStorageKey(productId))) {
+            const localReviews = getProductReviews(productId);
+            if (!localReviews.length) {
                 saveProductReviews(productId, getDefaultReviews());
             }
 
@@ -396,10 +458,13 @@
             }
 
             renderProductReviews(productId);
+            const mergedReviews = await syncReviewsFromCloud(productId, getProductReviews(productId));
+            saveProductReviews(productId, mergedReviews);
+            renderProductReviews(productId);
 
             if (!form.dataset.bound) {
                 form.dataset.bound = '1';
-                form.addEventListener('submit', (event) => {
+                form.addEventListener('submit', async (event) => {
                     event.preventDefault();
 
                     const nameField = document.getElementById('reviewerName');
@@ -416,10 +481,15 @@
                     reviews.unshift({ name, rating, comment, createdAt: new Date().toISOString() });
                     saveProductReviews(productId, reviews);
                     renderProductReviews(productId);
+                    const result = await persistReviews(productId, reviews);
 
                     form.reset();
                     ratingField.value = '5';
-                    showToast('Review added successfully!');
+                    if (result.ok) {
+                        showToast('Review added successfully!');
+                    } else {
+                        showToast(`Review added locally, cloud sync failed (${result.error || 'Unknown error'})`, 'error');
+                    }
                 });
             }
         }

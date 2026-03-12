@@ -1180,6 +1180,115 @@ async function syncCustomProductsFromCloud() {
     }
 }
 
+function normalizeProductReviewEntry(review) {
+    if (!review || typeof review !== 'object' || Array.isArray(review)) return null;
+    const name = String(review.name || '').trim();
+    const comment = String(review.comment || '').trim();
+    const rating = Math.max(1, Math.min(5, Number(review.rating) || 5));
+    if (!name || !comment) return null;
+    return {
+        name,
+        rating,
+        comment,
+        createdAt: String(review.createdAt || new Date().toISOString())
+    };
+}
+
+function normalizeProductReviewsList(input) {
+    if (!Array.isArray(input)) return [];
+    return input.map(normalizeProductReviewEntry).filter(Boolean);
+}
+
+function getProductReviewsCloudPath(productId) {
+    const numericId = Number(productId);
+    if (!Number.isFinite(numericId) || numericId <= 0) return '';
+    return `/productReviews/${numericId}`;
+}
+
+async function loadSharedProductReviews(productId) {
+    const path = getProductReviewsCloudPath(productId);
+    if (!path || !isCustomProductsCloudSyncEnabled()) return null;
+    lastCustomProductsSyncError = '';
+
+    const normalizePayload = (payload) => {
+        if (Array.isArray(payload)) return normalizeProductReviewsList(payload);
+        if (payload && typeof payload === 'object') return normalizeProductReviewsList(Object.values(payload));
+        return [];
+    };
+
+    try {
+        cloudSyncTemporarilyDisabled = false;
+        if (!cloudSession?.idToken) {
+            await ensureCloudSessionForCustomProducts();
+        }
+        if (isCloudSyncEnabled() && cloudSession?.idToken) {
+            const data = await firebaseDbRequest(path, 'GET');
+            return normalizePayload(data);
+        }
+    } catch (error) {
+        console.warn('Shared product reviews auth load failed:', error.message);
+        lastCustomProductsSyncError = String(error?.message || 'Reviews load failed.');
+    }
+
+    try {
+        const baseUrl = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
+        if (!baseUrl) return null;
+        const response = await fetch(`${baseUrl}${path}.json`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return normalizePayload(data);
+    } catch (error) {
+        console.warn('Shared product reviews public load failed:', error.message);
+        if (!lastCustomProductsSyncError) {
+            lastCustomProductsSyncError = String(error?.message || 'Reviews load failed.');
+        }
+        return null;
+    }
+}
+
+async function saveSharedProductReviews(productId, reviews) {
+    const path = getProductReviewsCloudPath(productId);
+    const normalized = normalizeProductReviewsList(reviews);
+    if (!path || !isCustomProductsCloudSyncEnabled()) {
+        return { ok: false, error: 'Cloud sync not configured.' };
+    }
+    lastCustomProductsSyncError = '';
+
+    try {
+        cloudSyncTemporarilyDisabled = false;
+        if (!cloudSession?.idToken) {
+            await ensureCloudSessionForCustomProducts();
+        }
+        if (isCloudSyncEnabled() && cloudSession?.idToken) {
+            await firebaseDbRequest(path, 'PUT', normalized);
+            return { ok: true, error: '' };
+        }
+    } catch (error) {
+        console.warn('Shared product reviews auth save failed:', error.message);
+        lastCustomProductsSyncError = String(error?.message || 'Reviews save failed.');
+    }
+
+    try {
+        const baseUrl = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
+        if (!baseUrl) {
+            return { ok: false, error: lastCustomProductsSyncError || 'Realtime Database URL missing.' };
+        }
+        const response = await fetch(`${baseUrl}${path}.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(normalized)
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            return { ok: false, error: text || `Cloud save failed (${response.status})` };
+        }
+        return { ok: true, error: '' };
+    } catch (error) {
+        const message = String(error?.message || lastCustomProductsSyncError || 'Reviews save failed.');
+        return { ok: false, error: message };
+    }
+}
+
 function getStoredCustomProducts() {
     try {
         const data = localStorage.getItem(CUSTOM_PRODUCTS_KEY);
@@ -2405,6 +2514,8 @@ window.removeAdminProduct = removeAdminProduct;
 window.removeProductAsAdmin = removeProductAsAdmin;
 window.removeFeaturedProductAsAdmin = removeFeaturedProductAsAdmin;
 window.removeAllAdminProducts = removeAllAdminProducts;
+window.loadSharedProductReviews = loadSharedProductReviews;
+window.saveSharedProductReviews = saveSharedProductReviews;
 window.registerAccount = registerAccount;
 window.loginAccount = loginAccount;
 window.requestPasswordReset = requestPasswordReset;
