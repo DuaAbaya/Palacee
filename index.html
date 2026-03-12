@@ -237,8 +237,6 @@
                 if (!product) return '';
                 
                 const isWishlisted = window.isInWishlist ? window.isInWishlist(product.id) : false;
-                const showAdminRemove = window.isAdminModeEnabled ? window.isAdminModeEnabled() : false;
-                
                 return `
                     <div class="product-card" data-product-id="${product.id}">
                         <div class="product-image">
@@ -249,7 +247,6 @@
                                         onclick="${isWishlisted ? `removeFromWishlist(${product.id})` : `addToWishlist(${product.id})`}"
                                         data-product-id="${product.id}">♥</button>
                                 <button class="product-action-btn" onclick="openQuickView(${product.id})">👁</button>
-                                ${showAdminRemove ? `<button class="product-action-btn featured-delete-btn" onclick="handleFeaturedDelete(event, ${product.id})" data-delete-id="${product.id}" title="Remove product" style="font-size: 0.68rem; font-weight: 700; cursor: pointer;">✕</button>` : ''}
                             </div>
                             <div class="product-quick-view" onclick="openQuickView(${product.id})">Quick View</div>
                         </div>

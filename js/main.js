@@ -2300,7 +2300,6 @@ function renderProducts(productsToRender = products) {
 
 function createProductCard(product) {
     const isWishlisted = isInWishlist(product.id);
-    const showAdminRemove = isAdminModeEnabled();
     return `
         <div class="product-card">
             <div class="product-image">
@@ -2313,7 +2312,6 @@ function createProductCard(product) {
                             onclick="${isWishlisted ? `removeFromWishlist(${product.id})` : `addToWishlist(${product.id})`}"
                             data-product-id="${product.id}">♥</button>
                     <button class="product-action-btn" onclick="openQuickView(${product.id})">👁</button>
-                    ${showAdminRemove ? `<button class="product-action-btn" onclick="removeProductAsAdmin(${product.id})" title="Remove product" style="font-size: 0.68rem; font-weight: 700;">DEL</button>` : ''}
                 </div>
                 <div class="product-quick-view" onclick="openQuickView(${product.id})">Quick View</div>
             <div class="product-info">
