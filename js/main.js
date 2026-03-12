@@ -166,6 +166,21 @@ function isPermissionDeniedError(message) {
     return text.includes('permission denied') || text.includes('unauthorized') || text.includes('401') || text.includes('403');
 }
 
+function mapCloudSyncError(message, context = 'sync') {
+    const raw = String(message || '').trim();
+    if (!raw) return `Cloud ${context} failed.`;
+    if (isPermissionDeniedError(raw)) {
+        return `Cloud ${context} blocked by Firebase rules (Permission denied).`;
+    }
+    if (/network|failed to fetch/i.test(raw)) {
+        return `Cloud ${context} failed due to network issue.`;
+    }
+    if (/operation_not_allowed|anonymous auth failed/i.test(raw)) {
+        return `Cloud ${context} failed (Firebase Anonymous Auth disabled).`;
+    }
+    return raw;
+}
+
 async function ensureCloudSessionForCustomProducts() {
     if (isCloudSyncEnabled() && cloudSession?.idToken) return true;
     if (!CLOUD_SYNC_CONFIG.enabled || !CLOUD_SYNC_CONFIG.firebaseApiKey) return false;
@@ -1227,7 +1242,7 @@ async function loadSharedProductReviews(productId) {
         }
     } catch (error) {
         console.warn('Shared product reviews auth load failed:', error.message);
-        lastCustomProductsSyncError = String(error?.message || 'Reviews load failed.');
+        lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Reviews load failed.', 'review load');
     }
 
     try {
@@ -1240,7 +1255,7 @@ async function loadSharedProductReviews(productId) {
     } catch (error) {
         console.warn('Shared product reviews public load failed:', error.message);
         if (!lastCustomProductsSyncError) {
-            lastCustomProductsSyncError = String(error?.message || 'Reviews load failed.');
+            lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Reviews load failed.', 'review load');
         }
         return null;
     }
@@ -1265,7 +1280,7 @@ async function saveSharedProductReviews(productId, reviews) {
         }
     } catch (error) {
         console.warn('Shared product reviews auth save failed:', error.message);
-        lastCustomProductsSyncError = String(error?.message || 'Reviews save failed.');
+        lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Reviews save failed.', 'review sync');
     }
 
     try {
@@ -1280,11 +1295,11 @@ async function saveSharedProductReviews(productId, reviews) {
         });
         if (!response.ok) {
             const text = await response.text();
-            return { ok: false, error: text || `Cloud save failed (${response.status})` };
+            return { ok: false, error: mapCloudSyncError(text || `Cloud save failed (${response.status})`, 'review sync') };
         }
         return { ok: true, error: '' };
     } catch (error) {
-        const message = String(error?.message || lastCustomProductsSyncError || 'Reviews save failed.');
+        const message = mapCloudSyncError(error?.message || lastCustomProductsSyncError || 'Reviews save failed.', 'review sync');
         return { ok: false, error: message };
     }
 }
