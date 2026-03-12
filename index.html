@@ -29,7 +29,6 @@
     </style>
 </head>
 <body>
-    <button id="adminModeBtn" onclick="promptAdminCode()" style="position:fixed;top:10px;left:10px;z-index:9999;padding:8px 15px;background:#ff6b6b;color:white;border:none;border-radius:5px;cursor:pointer;display:none;">Admin</button>
     <div class="page-loader"><div class="page-loader-spinner"></div></div>
     <nav class="navbar">
         <div class="navbar-container">
@@ -403,15 +402,12 @@
                     window.setAdminModeEnabled(newState);
                     alert(newState ? "Admin mode enabled!" : "Admin mode disabled!");
                     
-                    // Update button appearance
-                    updateAdminButtonStatus();
                 } else {
                     // Fallback if function not available yet
                     if (typeof setAdminModeEnabled === 'function') {
                         const newState = !isCurrentlyAdmin;
                         setAdminModeEnabled(newState);
                         alert(newState ? "Admin mode enabled!" : "Admin mode disabled!");
-                        updateAdminButtonStatus();
                     } else {
                         alert("Admin functions not loaded. Please refresh the page.");
                         return;
@@ -430,33 +426,9 @@
                 alert('An error occurred. Please try again.');
             }
         }
-        
-        function updateAdminButtonStatus() {
-            try {
-                const btn = document.getElementById('adminModeBtn');
-                if (!btn) return;
-                
-                const isAdmin = window.isAdminModeEnabled ? window.isAdminModeEnabled() : false;
-                if (isAdmin) {
-                    btn.style.background = '#2ecc71';
-                    btn.textContent = 'Admin ✓';
-                } else {
-                    btn.style.background = '#ff6b6b';
-                    btn.textContent = 'Admin';
-                }
-            } catch (error) {
-                console.error('Error updating admin button status:', error);
-            }
-        }
-        
         window.addEventListener('load', () => {
             try {
                 initHomeProductSlider();
-                
-                // Update admin button status on page load
-                setTimeout(() => {
-                    updateAdminButtonStatus();
-                }, 100);
             } catch (error) {
                 console.error('Error in window load event:', error);
             } finally {
@@ -469,9 +441,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 hidePageLoader();
-                updateAdminButtonStatus();
             }, 100);
         });
     </script>
 </body>
 </html>
+
