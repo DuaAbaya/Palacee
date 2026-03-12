@@ -290,6 +290,22 @@
             return `productReviews_${productId}`;
         }
 
+        function getReviewDirtyKey(productId) {
+            return `productReviewsDirty_${productId}`;
+        }
+
+        function isReviewDirty(productId) {
+            return localStorage.getItem(getReviewDirtyKey(productId)) === '1';
+        }
+
+        function setReviewDirty(productId, dirty) {
+            if (dirty) {
+                localStorage.setItem(getReviewDirtyKey(productId), '1');
+            } else {
+                localStorage.removeItem(getReviewDirtyKey(productId));
+            }
+        }
+
         function normalizeReviewList(input) {
             if (!Array.isArray(input)) return [];
             return input.map(review => {
@@ -333,6 +349,9 @@
             if (typeof window.loadSharedProductReviews !== 'function') return normalizeReviewList(fallbackReviews);
 
             const localReviews = normalizeReviewList(fallbackReviews);
+            if (isReviewDirty(productId)) {
+                return localReviews.length ? localReviews : normalizeReviewList(getDefaultReviews());
+            }
             try {
                 const cloudReviews = await window.loadSharedProductReviews(productId);
                 if (Array.isArray(cloudReviews) && cloudReviews.length > 0) {
@@ -358,9 +377,13 @@
         async function persistReviews(productId, reviews) {
             const normalized = normalizeReviewList(reviews);
             saveProductReviews(productId, normalized);
+            setReviewDirty(productId, true);
             if (typeof window.saveSharedProductReviews !== 'function') return { ok: true, cloud: false };
             try {
                 const result = await window.saveSharedProductReviews(productId, normalized);
+                if (result?.ok) {
+                    setReviewDirty(productId, false);
+                }
                 return { ok: Boolean(result?.ok), cloud: Boolean(result?.ok), error: result?.error || '' };
             } catch (error) {
                 return { ok: false, cloud: false, error: String(error?.message || 'Cloud sync failed.') };
