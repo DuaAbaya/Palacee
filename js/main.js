@@ -987,42 +987,7 @@ function hideProductById(productId) {
 }
 
 function setupHiddenAdminAccess() {
-    if (document.getElementById('hiddenAdminTrigger')) return;
-
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.id = 'hiddenAdminTrigger';
-    trigger.setAttribute('aria-label', 'Admin access');
-    trigger.style.position = 'fixed';
-    trigger.style.top = '10px';
-    trigger.style.left = '10px';
-    trigger.style.width = '20px';
-    trigger.style.height = '20px';
-    trigger.style.opacity = '0.35';
-    trigger.style.border = '1px solid rgba(0, 0, 0, 0.2)';
-    trigger.style.borderRadius = '50%';
-    trigger.style.background = 'rgba(0, 0, 0, 0.08)';
-    trigger.style.color = 'transparent';
-    trigger.style.zIndex = '6000';
-    trigger.style.cursor = 'pointer';
-
-    trigger.addEventListener('click', () => {
-        const input = prompt('Admin access code:');
-        if (input === null) return;
-        const value = String(input).trim();
-        if (value === ADMIN_SECRET_CODE) {
-            const next = !isAdminModeEnabled();
-            setAdminModeEnabled(next);
-            showToast(next ? 'Admin mode enabled.' : 'Admin mode disabled.');
-            if (document.querySelector('.products-grid, .shop-products-grid')) {
-                renderProducts();
-            }
-        } else {
-            showToast('Invalid admin code.', 'error');
-        }
-    });
-
-    document.body.appendChild(trigger);
+    return;
 }
 
 // ============================================

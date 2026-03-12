@@ -123,6 +123,10 @@
                 <div class="tab-content" id="reviews">
                     <h3>Customer Reviews</h3>
                     <div class="reviews-wrap">
+                        <div class="review-admin-bar">
+                            <button type="button" class="btn btn-secondary" id="toggleReviewAdminBtn">Enable Admin</button>
+                        </div>
+
                         <div class="testimonials-grid" id="productReviewsList" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));"></div>
                         <p class="reviews-empty" id="productReviewsEmpty" style="display:none;">No reviews yet. Be the first to review this product.</p>
 
@@ -353,12 +357,42 @@
             showToast('Review deleted');
         }
 
+        function setReviewAdminMode(enabled) {
+            isReviewAdmin = !!enabled;
+            const btn = document.getElementById('toggleReviewAdminBtn');
+            if (btn) {
+                btn.textContent = isReviewAdmin ? 'Disable Admin' : 'Enable Admin';
+                btn.classList.toggle('btn-primary', isReviewAdmin);
+                btn.classList.toggle('btn-secondary', !isReviewAdmin);
+            }
+            renderProductReviews(currentProductId);
+        }
+
         function initializeProductReviews(productId) {
             const form = document.getElementById('productReviewForm');
+            const adminBtn = document.getElementById('toggleReviewAdminBtn');
             if (!form) return;
 
             if (!localStorage.getItem(getReviewStorageKey(productId))) {
                 saveProductReviews(productId, getDefaultReviews());
+            }
+
+            if (adminBtn && !adminBtn.dataset.bound) {
+                adminBtn.dataset.bound = '1';
+                adminBtn.addEventListener('click', () => {
+                    if (isReviewAdmin) {
+                        setReviewAdminMode(false);
+                        return;
+                    }
+
+                    const code = window.prompt('Enter admin code to manage reviews');
+                    if (code === 'admin9415') {
+                        setReviewAdminMode(true);
+                        showToast('Admin mode enabled');
+                    } else if (code !== null) {
+                        showToast('Invalid admin code', 'error');
+                    }
+                });
             }
 
             renderProductReviews(productId);
