@@ -413,7 +413,7 @@
                 if (result.ok) {
                     showToast('Review deleted');
                 } else {
-                    showToast(`Review deleted locally, cloud sync failed (${result.error || 'Unknown error'})`, 'error');
+                    showToast(`Review deleted locally. ${result.error || 'Cloud sync failed.'}`, 'error');
                 }
             });
         }
@@ -488,7 +488,7 @@
                     if (result.ok) {
                         showToast('Review added successfully!');
                     } else {
-                        showToast(`Review added locally, cloud sync failed (${result.error || 'Unknown error'})`, 'error');
+                        showToast(`Review added locally. ${result.error || 'Cloud sync failed.'}`, 'error');
                     }
                 });
             }

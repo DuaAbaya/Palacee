@@ -178,6 +178,9 @@ function mapCloudSyncError(message, context = 'sync') {
     if (/operation_not_allowed|anonymous auth failed/i.test(raw)) {
         return `Cloud ${context} failed (Firebase Anonymous Auth disabled).`;
     }
+    if (/api_key_http_referrer_blocked|api key not valid/i.test(raw)) {
+        return `Cloud ${context} failed (Firebase API key restriction issue).`;
+    }
     return raw;
 }
 
@@ -1272,35 +1275,26 @@ async function saveSharedProductReviews(productId, reviews) {
     try {
         cloudSyncTemporarilyDisabled = false;
         if (!cloudSession?.idToken) {
-            await ensureCloudSessionForCustomProducts();
+            const ensured = await ensureCloudSessionForCustomProducts();
+            if (!ensured || !cloudSession?.idToken) {
+                return {
+                    ok: false,
+                    error: mapCloudSyncError(lastCustomProductsSyncError || 'Anonymous auth failed. Enable Firebase Anonymous sign-in.', 'review sync')
+                };
+            }
         }
         if (isCloudSyncEnabled() && cloudSession?.idToken) {
             await firebaseDbRequest(path, 'PUT', normalized);
             return { ok: true, error: '' };
         }
+        return {
+            ok: false,
+            error: mapCloudSyncError('Cloud session missing.', 'review sync')
+        };
     } catch (error) {
         console.warn('Shared product reviews auth save failed:', error.message);
         lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Reviews save failed.', 'review sync');
-    }
-
-    try {
-        const baseUrl = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
-        if (!baseUrl) {
-            return { ok: false, error: lastCustomProductsSyncError || 'Realtime Database URL missing.' };
-        }
-        const response = await fetch(`${baseUrl}${path}.json`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(normalized)
-        });
-        if (!response.ok) {
-            const text = await response.text();
-            return { ok: false, error: mapCloudSyncError(text || `Cloud save failed (${response.status})`, 'review sync') };
-        }
-        return { ok: true, error: '' };
-    } catch (error) {
-        const message = mapCloudSyncError(error?.message || lastCustomProductsSyncError || 'Reviews save failed.', 'review sync');
-        return { ok: false, error: message };
+        return { ok: false, error: lastCustomProductsSyncError };
     }
 }
 
