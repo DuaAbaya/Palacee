@@ -90,19 +90,19 @@
                     <div class="filter-section">
                         <h4>Categories</h4>
                         <div class="filter-options">
-                            <label class="filter-option"><input type="checkbox" value="Jilbaab"><span>Jilbaab</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Nakab"><span>Nakab</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Abaya"><span>Abaya</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Hijab Caps"><span>Hijab Caps</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Gloves"><span>Gloves</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Socks"><span>Socks</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Hijab Pins"><span>Hijab Pins</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Stalls"><span>Stalls</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Rida"><span>Rida</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Kids Abaya"><span>Kids Abaya</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Nose Peices"><span>Nose Peices</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Sleeves"><span>Sleeves</span></label>
-                            <label class="filter-option"><input type="checkbox" value="Kids Rida"><span>Kids Rida</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Jilbaab" data-filter-group="category"><span>Jilbaab</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Nakab" data-filter-group="category"><span>Nakab</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Abaya" data-filter-group="category"><span>Abaya</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Hijab Caps" data-filter-group="category"><span>Hijab Caps</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Gloves" data-filter-group="category"><span>Gloves</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Socks" data-filter-group="category"><span>Socks</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Hijab Pins" data-filter-group="category"><span>Hijab Pins</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Stalls" data-filter-group="category"><span>Stalls</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Rida" data-filter-group="category"><span>Rida</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Kids Abaya" data-filter-group="category"><span>Kids Abaya</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Nose Peices" data-filter-group="category"><span>Nose Peices</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Sleeves" data-filter-group="category"><span>Sleeves</span></label>
+                            <label class="filter-option"><input type="checkbox" value="Kids Rida" data-filter-group="category"><span>Kids Rida</span></label>
                         </div>
                     </div>
                     
@@ -118,18 +118,18 @@
                     <div class="filter-section">
                         <h4>Size</h4>
                         <div class="filter-options">
-                            <label class="filter-option"><input type="checkbox" value="S"><span>Small</span></label>
-                            <label class="filter-option"><input type="checkbox" value="M"><span>Medium</span></label>
-                            <label class="filter-option"><input type="checkbox" value="L"><span>Large</span></label>
-                            <label class="filter-option"><input type="checkbox" value="XL"><span>XL</span></label>
-                            <label class="filter-option"><input type="checkbox" value="XXL"><span>XXL</span></label>
+                            <label class="filter-option"><input type="checkbox" value="S" data-filter-group="size"><span>Small</span></label>
+                            <label class="filter-option"><input type="checkbox" value="M" data-filter-group="size"><span>Medium</span></label>
+                            <label class="filter-option"><input type="checkbox" value="L" data-filter-group="size"><span>Large</span></label>
+                            <label class="filter-option"><input type="checkbox" value="XL" data-filter-group="size"><span>XL</span></label>
+                            <label class="filter-option"><input type="checkbox" value="XXL" data-filter-group="size"><span>XXL</span></label>
                         </div>
                     </div>
                     
                     <div class="filter-section">
                         <h4>Color</h4>
                         <div class="filter-color">
-                            <div class="color-swatch active" style="background: #000;" title="Black"></div>
+                            <div class="color-swatch" style="background: #000;" title="Black"></div>
                             <div class="color-swatch" style="background: #8B4513;" title="Brown"></div>
                             <div class="color-swatch" style="background: #000080;" title="Navy"></div>
                             <div class="color-swatch" style="background: #d4c4a8;" title="Beige"></div>
@@ -233,6 +233,18 @@
                     initializeApp();
                 }
             }
+
+            // Keep default state unfiltered on every shop open/reload.
+            document.querySelectorAll('.filter-option input[type="checkbox"]').forEach(input => {
+                input.checked = false;
+            });
+            const minPriceInput = document.getElementById('minPrice');
+            const maxPriceInput = document.getElementById('maxPrice');
+            const sortSelect = document.getElementById('sortSelect');
+            if (minPriceInput) minPriceInput.value = '';
+            if (maxPriceInput) maxPriceInput.value = '';
+            if (sortSelect) sortSelect.value = '';
+            document.querySelectorAll('.color-swatch.active').forEach(swatch => swatch.classList.remove('active'));
             
             // Now render products
             setTimeout(() => {

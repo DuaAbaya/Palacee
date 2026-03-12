@@ -2252,14 +2252,17 @@ function setupFilters() {
 }
 
 function applyFilters() {
-    const categories = Array.from(document.querySelectorAll('.filter-option input:checked')).map(input => input.value);
+    const categories = Array.from(document.querySelectorAll('.filter-option input[data-filter-group="category"]:checked')).map(input => input.value);
+    const selectedSizes = Array.from(document.querySelectorAll('.filter-option input[data-filter-group="size"]:checked')).map(input => input.value);
     const minPrice = parseFloat(document.getElementById('minPrice')?.value) || 0;
     const maxPrice = parseFloat(document.getElementById('maxPrice')?.value) || Infinity;
 
     let filtered = products.filter(product => {
         const categoryMatch = categories.length === 0 || categories.includes(product.category);
         const priceMatch = product.price >= minPrice && product.price <= maxPrice;
-        return categoryMatch && priceMatch;
+        const productSizes = Array.isArray(product.sizes) ? product.sizes : [];
+        const sizeMatch = selectedSizes.length === 0 || selectedSizes.some(size => productSizes.includes(size));
+        return categoryMatch && priceMatch && sizeMatch;
     });
 
     const sortValue = document.getElementById('sortSelect')?.value;
