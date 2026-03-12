@@ -1245,7 +1245,19 @@ function getStoredCustomProducts() {
 }
 
 function saveStoredCustomProducts(customProducts) {
-    localStorage.setItem(CUSTOM_PRODUCTS_KEY, JSON.stringify(customProducts));
+    try {
+        localStorage.setItem(CUSTOM_PRODUCTS_KEY, JSON.stringify(customProducts));
+        return true;
+    } catch (error) {
+        console.warn('Failed to save custom products:', error);
+        const message = String(error?.message || '');
+        if (/quota|exceeded|storage/i.test(message)) {
+            lastCustomProductsSyncError = 'Browser storage full. Reduce image size or delete old products.';
+        } else {
+            lastCustomProductsSyncError = message || 'Local save failed.';
+        }
+        return false;
+    }
 }
 
 function loadCustomProducts() {
@@ -1271,17 +1283,21 @@ function loadCustomProducts() {
 async function addAdminProduct(rawProduct) {
     const newProduct = normalizeCustomProduct({ ...rawProduct, id: Date.now() });
     if (isBlockedProductName(newProduct.name)) {
-        return { product: null, synced: false, error: 'This product is blocked.' };
+        return { product: null, synced: false, savedLocally: false, error: 'This product is blocked.' };
     }
     const customProducts = getStoredCustomProducts();
     customProducts.unshift(newProduct);
-    saveStoredCustomProducts(customProducts);
+    const savedLocally = saveStoredCustomProducts(customProducts);
     products.push(newProduct);
-    const synced = await saveCustomProductsToCloud(customProducts);
+    let synced = false;
+    if (savedLocally || isCustomProductsCloudSyncEnabled()) {
+        synced = await saveCustomProductsToCloud(customProducts);
+    }
     if (typeof renderProducts === 'function') renderProducts();
     return {
         product: newProduct,
         synced: Boolean(synced),
+        savedLocally: Boolean(savedLocally),
         error: lastCustomProductsSyncError || ''
     };
 }

@@ -219,13 +219,68 @@
             renderAdminProducts();
         }
 
-        function filesToDataUrls(files) {
-            return Promise.all(Array.from(files).map(file => new Promise((resolve, reject) => {
+        function readFileAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = () => resolve(String(reader.result));
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
-            })));
+            });
+        }
+
+        function optimizeImageFile(file, maxDimension = 1400, quality = 0.82) {
+            return new Promise(async (resolve) => {
+                try {
+                    if (!file || !String(file.type || '').startsWith('image/')) {
+                        resolve(await readFileAsDataUrl(file));
+                        return;
+                    }
+
+                    const sourceDataUrl = await readFileAsDataUrl(file);
+                    const img = new Image();
+                    img.onload = () => {
+                        try {
+                            let width = img.naturalWidth || img.width;
+                            let height = img.naturalHeight || img.height;
+                            if (!width || !height) {
+                                resolve(sourceDataUrl);
+                                return;
+                            }
+
+                            const ratio = Math.min(1, maxDimension / Math.max(width, height));
+                            width = Math.round(width * ratio);
+                            height = Math.round(height * ratio);
+
+                            const canvas = document.createElement('canvas');
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            if (!ctx) {
+                                resolve(sourceDataUrl);
+                                return;
+                            }
+                            ctx.drawImage(img, 0, 0, width, height);
+
+                            const optimized = canvas.toDataURL('image/jpeg', quality);
+                            resolve(
+                                optimized && optimized.length < sourceDataUrl.length
+                                    ? optimized
+                                    : sourceDataUrl
+                            );
+                        } catch (e) {
+                            resolve(sourceDataUrl);
+                        }
+                    };
+                    img.onerror = () => resolve(sourceDataUrl);
+                    img.src = sourceDataUrl;
+                } catch (e) {
+                    resolve('');
+                }
+            });
+        }
+
+        function filesToDataUrls(files) {
+            return Promise.all(Array.from(files).map(file => optimizeImageFile(file)));
         }
 
         function parseCsv(text, fallback) {
@@ -257,7 +312,11 @@
                 }
 
                 const [mainImage] = await filesToDataUrls(mainImageInput.files);
-                const galleryImages = galleryInput.files.length ? await filesToDataUrls(galleryInput.files) : [];
+                if (!mainImage) {
+                    showToast('Unable to process main image', 'error');
+                    return;
+                }
+                const galleryImages = galleryInput.files.length ? (await filesToDataUrls(galleryInput.files)).filter(Boolean) : [];
 
                 const productData = {
                     name,
@@ -279,19 +338,30 @@
                     badge: 'new'
                 };
 
-                const result = await window.addAdminProduct(productData);
-                if (result && result.synced) {
-                    showToast('Product added and synced successfully!');
-                } else {
-                    const reason = (result && result.error) ? ` (${result.error})` : '';
-                    showToast(`Product added locally, cloud sync failed${reason}`, 'error');
+                try {
+                    const result = await window.addAdminProduct(productData);
+                    if (!result || result.product === null) {
+                        showToast(result?.error || 'Unable to add product', 'error');
+                        return;
+                    }
+                    if (result.synced) {
+                        showToast('Product added and synced successfully!');
+                    } else if (result.savedLocally) {
+                        const reason = result.error ? ` (${result.error})` : '';
+                        showToast(`Product added locally, cloud sync failed${reason}`, 'error');
+                    } else {
+                        const reason = result.error ? ` (${result.error})` : '';
+                        showToast(`Product added, but local save failed${reason}`, 'error');
+                    }
+                    form.reset();
+                    document.getElementById('adminCategory').value = 'Closed Abaya';
+                    document.getElementById('adminSizes').value = 'S,M,L,XL';
+                    document.getElementById('adminColors').value = 'Black';
+                    document.getElementById('adminIsFeatured').checked = false;
+                    renderAdminProducts();
+                } catch (error) {
+                    showToast(`Unable to add product (${error?.message || 'Unknown error'})`, 'error');
                 }
-                form.reset();
-                document.getElementById('adminCategory').value = 'Closed Abaya';
-                document.getElementById('adminSizes').value = 'S,M,L,XL';
-                document.getElementById('adminColors').value = 'Black';
-                document.getElementById('adminIsFeatured').checked = false;
-                renderAdminProducts();
             });
         }
 
