@@ -1092,7 +1092,29 @@ async function saveCustomProductsToCloud(customProducts) {
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
         lastCustomProductsSyncError = String(error?.message || 'Cloud sync failed.');
-        if (isPermissionDeniedError(lastCustomProductsSyncError)) return false;
+        if (isPermissionDeniedError(lastCustomProductsSyncError)) {
+            try {
+                // Retry once with a fresh anonymous auth session in case token/session is stale.
+                setCloudSession(null);
+                cloudSyncTemporarilyDisabled = false;
+                const ensured = await ensureCloudSessionForCustomProducts();
+                if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
+                    await firebaseDbRequest('/adminProducts', 'PUT', safeProducts);
+                    lastCustomProductsSyncError = '';
+                    return true;
+                }
+                lastCustomProductsSyncError = mapCloudSyncError(
+                    lastCustomProductsSyncError || 'Permission denied',
+                    'product sync'
+                );
+            } catch (retryError) {
+                lastCustomProductsSyncError = mapCloudSyncError(
+                    retryError?.message || lastCustomProductsSyncError || 'Permission denied',
+                    'product sync'
+                );
+            }
+            return false;
+        }
         try {
             await saveAdminProductsToCloud(safeProducts);
             lastCustomProductsSyncError = '';
