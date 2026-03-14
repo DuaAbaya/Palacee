@@ -1146,8 +1146,8 @@ function buildAdminProductsCloudPayload(customProducts) {
 function getAdminProductsCloudCollectionPaths() {
     const paths = [];
     const uid = String(cloudSession?.localId || '').trim();
-    if (uid) paths.push(`/users/${uid}/adminProducts`);
     paths.push('/adminProducts');
+    if (uid) paths.push(`/users/${uid}/adminProducts`);
     return [...new Set(paths)];
 }
 
@@ -1158,51 +1158,67 @@ function getAdminProductCloudDocumentPaths(productId) {
 }
 
 async function putAdminProductsCloudPayload(payload) {
+    let wrote = false;
     let lastError = null;
     for (const path of getAdminProductsCloudCollectionPaths()) {
         try {
             await firebaseDbRequest(path, 'PUT', payload);
-            return true;
+            wrote = true;
         } catch (error) {
             lastError = error;
         }
     }
+    if (wrote) return true;
     throw lastError || new Error('Cloud sync failed.');
 }
 
 async function loadAdminProductsCloudPayload() {
+    const merged = {};
+    let hasData = false;
     for (const path of getAdminProductsCloudCollectionPaths()) {
         try {
             const data = await firebaseDbRequest(path, 'GET');
-            if (data && typeof data === 'object') return data;
+            if (data && typeof data === 'object') {
+                const entries = Object.entries(data);
+                if (entries.length > 0) {
+                    for (const [id, product] of entries) {
+                        merged[id] = product;
+                    }
+                    hasData = true;
+                }
+            }
         } catch (error) {}
     }
-    return null;
+    return hasData ? merged : null;
 }
 
 async function putSingleAdminProductCloud(productId, product) {
+    let wrote = false;
     let lastError = null;
     for (const path of getAdminProductCloudDocumentPaths(productId)) {
         try {
             await firebaseDbRequest(path, 'PUT', product);
-            return true;
+            wrote = true;
         } catch (error) {
             lastError = error;
         }
     }
+    if (wrote) return true;
     throw lastError || new Error('Cloud sync failed.');
 }
 
 async function deleteSingleAdminProductCloud(productId) {
+    let deleted = false;
     let lastError = null;
     for (const path of getAdminProductCloudDocumentPaths(productId)) {
         try {
             await firebaseDbRequest(path, 'DELETE');
-            return true;
+            deleted = true;
         } catch (error) {
             lastError = error;
         }
     }
+    if (deleted) return true;
     throw lastError || new Error('Cloud delete failed.');
 }
 
