@@ -1072,6 +1072,22 @@ async function loadAdminProductsFromCloud() {
     return null;
 }
 
+function buildAdminProductsCloudPayload(customProducts) {
+    const list = (Array.isArray(customProducts) ? customProducts : [])
+        .map(normalizeCustomProduct)
+        .filter(product => {
+            const productId = Number(product?.id);
+            return Number.isFinite(productId) && productId > 0 && !isBlockedProductName(product?.name);
+        });
+
+    // Keep cloud shape ID-keyed so per-product delete path remains consistent.
+    const keyed = {};
+    for (const product of list) {
+        keyed[String(product.id)] = product;
+    }
+    return keyed;
+}
+
 
 // Cloud sync for custom products (admin products)
 async function saveCustomProductsToCloud(customProducts) {
@@ -1080,7 +1096,7 @@ async function saveCustomProductsToCloud(customProducts) {
         return false;
     }
     lastCustomProductsSyncError = '';
-    const safeProducts = (Array.isArray(customProducts) ? customProducts : []).filter(product => !isBlockedProductName(product?.name));
+    const safeProducts = buildAdminProductsCloudPayload(customProducts);
     try {
         // Custom product sync should not remain blocked by temporary user-sync auth failures.
         cloudSyncTemporarilyDisabled = false;
@@ -1495,11 +1511,12 @@ async function saveAdminProductsToCloud(products) {
     if (!isCustomProductsCloudSyncEnabled()) throw new Error('Cloud sync not configured.');
     const baseUrl = CLOUD_SYNC_CONFIG.firebaseDatabaseUrl;
     if (!baseUrl) throw new Error('Realtime Database URL missing.');
+    const payload = buildAdminProductsCloudPayload(products);
 
     const response = await fetch(`${baseUrl}/adminProducts.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(products)
+        body: JSON.stringify(payload)
     });
     if (!response.ok) {
         let reason = `Cloud save failed (${response.status})`;
