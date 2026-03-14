@@ -67,6 +67,7 @@ let currentCurrency = storedCurrency && storedCurrency !== 'USD' ? storedCurrenc
 let currentTheme = localStorage.getItem('theme') || 'light';
 
 const CUSTOM_PRODUCTS_KEY = 'customProducts';
+const CUSTOM_PRODUCTS_DIRTY_KEY = 'customProductsDirty';
 let customProductsLoaded = false;
 let lastCustomProductsSyncError = '';
 let customProductsMutationVersion = 0;
@@ -1058,6 +1059,14 @@ function isBlockedProductName(name) {
     return BLOCKED_PRODUCT_NAMES.has(normalized);
 }
 
+function setCustomProductsDirty(flag) {
+    localStorage.setItem(CUSTOM_PRODUCTS_DIRTY_KEY, flag ? '1' : '0');
+}
+
+function hasUnsyncedCustomProducts() {
+    return localStorage.getItem(CUSTOM_PRODUCTS_DIRTY_KEY) === '1';
+}
+
 async function loadAdminProductsFromCloud() {
     if (!isCustomProductsCloudSyncEnabled()) return null;
     try {
@@ -1112,11 +1121,13 @@ async function saveCustomProductsToCloud(customProducts) {
         }
         if (isCloudSyncEnabled() && cloudSession?.idToken) {
             await firebaseDbRequest('/adminProducts', 'PUT', safeProducts);
+            setCustomProductsDirty(false);
             return true;
         }
 
         // Final fallback for open DB rules (e.g. adminProducts .write=true).
         await saveAdminProductsToCloud(safeProducts);
+        setCustomProductsDirty(false);
         return true;
     } catch (error) {
         console.warn('Cloud custom products sync failed:', error.message);
@@ -1130,6 +1141,7 @@ async function saveCustomProductsToCloud(customProducts) {
                 if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
                     await firebaseDbRequest('/adminProducts', 'PUT', safeProducts);
                     lastCustomProductsSyncError = '';
+                    setCustomProductsDirty(false);
                     return true;
                 }
                 lastCustomProductsSyncError = mapCloudSyncError(
@@ -1147,6 +1159,7 @@ async function saveCustomProductsToCloud(customProducts) {
         try {
             await saveAdminProductsToCloud(safeProducts);
             lastCustomProductsSyncError = '';
+            setCustomProductsDirty(false);
             return true;
         } catch (fallbackError) {
             console.warn('Cloud custom products fallback sync failed:', fallbackError.message);
@@ -1209,6 +1222,7 @@ async function deleteSingleAdminProductFromCloud(productId) {
         }
 
         await firebaseDbRequest(`/adminProducts/${normalizedId}`, 'DELETE');
+        setCustomProductsDirty(false);
         return true;
     } catch (error) {
         // Fallback for open database rules without auth/session.
@@ -1218,7 +1232,10 @@ async function deleteSingleAdminProductFromCloud(productId) {
                 const response = await fetch(`${baseUrl}/adminProducts/${encodeURIComponent(normalizedId)}.json`, {
                     method: 'DELETE'
                 });
-                if (response.ok) return true;
+                if (response.ok) {
+                    setCustomProductsDirty(false);
+                    return true;
+                }
             }
         } catch (fallbackError) {
             console.warn('Cloud delete fallback failed:', fallbackError);
@@ -1271,6 +1288,10 @@ async function loadCustomProductsFromCloud() {
 
 async function syncCustomProductsFromCloud() {
     if (!isCustomProductsCloudSyncEnabled()) return;
+    if (hasUnsyncedCustomProducts()) {
+        console.warn('Skipping cloud custom products pull due to unsynced local changes');
+        return;
+    }
     const syncStartedAtVersion = customProductsMutationVersion;
     try {
         const cloudProducts = await loadCustomProductsFromCloud();
@@ -1511,6 +1532,7 @@ async function addAdminProduct(rawProduct) {
     customProducts.unshift(newProduct);
     const savedLocally = saveStoredCustomProducts(customProducts);
     if (savedLocally) {
+        setCustomProductsDirty(true);
         customProductsMutationVersion += 1;
     }
     products.push(newProduct);
@@ -1594,6 +1616,7 @@ async function removeAdminProduct(id, fallbackIndex = null) {
     if (!savedLocally) {
         return false;
     }
+    setCustomProductsDirty(true);
     customProductsMutationVersion += 1;
     
     // Verify it was saved
@@ -1645,7 +1668,10 @@ function removeAllAdminProducts() {
     }
     
     // Remove all custom products from localStorage
-    saveStoredCustomProducts([]);
+    const savedLocally = saveStoredCustomProducts([]);
+    if (savedLocally) {
+        setCustomProductsDirty(true);
+    }
     
     // Remove all custom products from products array
     for (let i = products.length - 1; i >= 0; i -= 1) {
