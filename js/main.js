@@ -94,6 +94,8 @@ const CLOUD_SYNC_CONFIG = {
     firebaseProjectId: 'duaabaya',
     firebaseDatabaseUrl: 'https://duaabaya-default-rtdb.firebaseio.com'
 };
+const ADMIN_PRODUCTS_SYNC_EMAIL = 'dap.admin.sync@duaabaya.com';
+const ADMIN_PRODUCTS_SYNC_PASSWORD = 'DuaAbaya_Admin_9415';
 
 const CLOUD_SESSION_KEY = 'cloudAuthSession';
 let cloudSession = safeJSONParse(localStorage.getItem(CLOUD_SESSION_KEY), null);
@@ -199,9 +201,53 @@ function shouldDisableCloudSyncOnError(message) {
 }
 
 async function ensureCloudSessionForCustomProducts() {
-    if (isCloudSyncEnabled() && cloudSession?.idToken) return true;
+    if (isCloudSyncEnabled() && cloudSession?.idToken && !cloudSession?.isAnonymous) return true;
     if (!CLOUD_SYNC_CONFIG.enabled || !CLOUD_SYNC_CONFIG.firebaseApiKey) return false;
     try {
+        try {
+            const loginData = await firebaseAuthRequest('accounts:signInWithPassword', {
+                email: ADMIN_PRODUCTS_SYNC_EMAIL,
+                password: ADMIN_PRODUCTS_SYNC_PASSWORD,
+                returnSecureToken: true
+            });
+            setCloudSession({
+                idToken: loginData.idToken,
+                refreshToken: loginData.refreshToken,
+                localId: loginData.localId,
+                email: ADMIN_PRODUCTS_SYNC_EMAIL,
+                isAnonymous: false
+            });
+            cloudSyncTemporarilyDisabled = false;
+            return true;
+        } catch (loginError) {
+            const loginCode = String(loginError?.message || '').trim();
+            if (loginCode === 'EMAIL_NOT_FOUND') {
+                await firebaseAuthRequest('accounts:signUp', {
+                    email: ADMIN_PRODUCTS_SYNC_EMAIL,
+                    password: ADMIN_PRODUCTS_SYNC_PASSWORD,
+                    returnSecureToken: true
+                });
+                const retryData = await firebaseAuthRequest('accounts:signInWithPassword', {
+                    email: ADMIN_PRODUCTS_SYNC_EMAIL,
+                    password: ADMIN_PRODUCTS_SYNC_PASSWORD,
+                    returnSecureToken: true
+                });
+                setCloudSession({
+                    idToken: retryData.idToken,
+                    refreshToken: retryData.refreshToken,
+                    localId: retryData.localId,
+                    email: ADMIN_PRODUCTS_SYNC_EMAIL,
+                    isAnonymous: false
+                });
+                cloudSyncTemporarilyDisabled = false;
+                return true;
+            }
+            // If email/password sign-in is blocked by Firebase config, fallback to anonymous.
+            if (!/operation_not_allowed|configuration_not_found/i.test(loginCode)) {
+                throw loginError;
+            }
+        }
+
         const authData = await firebaseAuthRequest('accounts:signUp', { returnSecureToken: true });
         setCloudSession({
             idToken: authData.idToken,
