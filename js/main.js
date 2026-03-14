@@ -94,7 +94,7 @@ const CLOUD_SYNC_CONFIG = {
     firebaseProjectId: 'duaabaya',
     firebaseDatabaseUrl: 'https://duaabaya-default-rtdb.firebaseio.com'
 };
-const ADMIN_PRODUCTS_SYNC_EMAIL = 'dap.admin.sync@duaabaya.com';
+const ADMIN_PRODUCTS_SYNC_EMAIL = 'tanveerkhan.ltp786786@gmail.com';
 const ADMIN_PRODUCTS_SYNC_PASSWORD = 'DuaAbaya_Admin_9415';
 
 const CLOUD_SESSION_KEY = 'cloudAuthSession';
