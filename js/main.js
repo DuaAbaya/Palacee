@@ -69,6 +69,7 @@ let currentTheme = localStorage.getItem('theme') || 'light';
 const CUSTOM_PRODUCTS_KEY = 'customProducts';
 let customProductsLoaded = false;
 let lastCustomProductsSyncError = '';
+let customProductsMutationVersion = 0;
 const BLOCKED_PRODUCT_NAMES = new Set(['ambroidery nakab']);
 
 const currencySymbols = { INR: '₹', PKR: '₨', USD: '$', SAR: '﷼', AED: 'د.إ' };
@@ -1216,8 +1217,13 @@ async function loadCustomProductsFromCloud() {
 
 async function syncCustomProductsFromCloud() {
     if (!isCustomProductsCloudSyncEnabled()) return;
+    const syncStartedAtVersion = customProductsMutationVersion;
     try {
         const cloudProducts = await loadCustomProductsFromCloud();
+        if (syncStartedAtVersion !== customProductsMutationVersion) {
+            console.log('Skipping stale custom products cloud sync result');
+            return;
+        }
         if (Array.isArray(cloudProducts)) {
             const normalizedCloudProducts = cloudProducts
                 .map(normalizeCustomProduct)
@@ -1439,6 +1445,9 @@ async function addAdminProduct(rawProduct) {
     const customProducts = getStoredCustomProducts();
     customProducts.unshift(newProduct);
     const savedLocally = saveStoredCustomProducts(customProducts);
+    if (savedLocally) {
+        customProductsMutationVersion += 1;
+    }
     products.push(newProduct);
     let synced = false;
     if (savedLocally && isCustomProductsCloudSyncEnabled()) {
@@ -1484,7 +1493,7 @@ async function saveAdminProductsToCloud(products) {
 
 
 
-function removeAdminProduct(id, fallbackIndex = null) {
+async function removeAdminProduct(id, fallbackIndex = null) {
     const rawId = String(id ?? '').trim();
     const targetId = Number(rawId);
     const hasNumericId = Number.isFinite(targetId) && targetId > 0;
@@ -1515,7 +1524,11 @@ function removeAdminProduct(id, fallbackIndex = null) {
     console.log('After removal - count:', filtered.length);
     
     // Save the filtered products - MAKE SURE THIS IS SAVED
-    saveStoredCustomProducts(filtered);
+    const savedLocally = saveStoredCustomProducts(filtered);
+    if (!savedLocally) {
+        return false;
+    }
+    customProductsMutationVersion += 1;
     
     // Verify it was saved
     const savedProducts = getStoredCustomProducts();
@@ -1534,7 +1547,7 @@ function removeAdminProduct(id, fallbackIndex = null) {
     console.log('Memory - before:', beforeFilter, 'after:', products.length);
     
     // Sync with cloud
-    saveCustomProductsToCloud(filtered);
+    await saveCustomProductsToCloud(filtered);
     
     // Try to refresh both shop and home sliders
     if (typeof renderProducts === 'function') {
@@ -1583,7 +1596,7 @@ function removeAllAdminProducts() {
     return true;
 }
 
-function removeProductAsAdmin(productId) {
+async function removeProductAsAdmin(productId) {
     console.log('=== removeProductAsAdmin called ===');
     console.log('removeProductAsAdmin called with ID:', productId);
     
@@ -1612,7 +1625,7 @@ function removeProductAsAdmin(productId) {
 
     if (target.isCustom) {
         console.log('Product is custom, removing from admin products');
-        const removed = removeAdminProduct(targetId);
+        const removed = await removeAdminProduct(targetId);
         if (!removed) {
             console.error('Failed to remove admin product');
             showToast('Unable to remove product.', 'error');

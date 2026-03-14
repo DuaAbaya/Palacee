@@ -389,10 +389,13 @@
             `).join('');
 
             list.querySelectorAll('[data-remove-id]').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', async () => {
                     const rawId = btn.dataset.removeId;
                     const removeIndex = Number(btn.dataset.removeIndex);
-                    if (!window.removeAdminProduct(rawId, Number.isFinite(removeIndex) ? removeIndex : null)) {
+                    btn.disabled = true;
+                    const removed = await window.removeAdminProduct(rawId, Number.isFinite(removeIndex) ? removeIndex : null);
+                    if (!removed) {
+                        btn.disabled = false;
                         showToast('Unable to delete product', 'error');
                         return;
                     }
