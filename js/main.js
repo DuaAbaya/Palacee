@@ -1097,6 +1097,69 @@ function buildAdminProductsCloudPayload(customProducts) {
     return keyed;
 }
 
+function getAdminProductsCloudCollectionPaths() {
+    const paths = [];
+    const uid = String(cloudSession?.localId || '').trim();
+    if (uid) paths.push(`/users/${uid}/adminProducts`);
+    paths.push('/adminProducts');
+    return [...new Set(paths)];
+}
+
+function getAdminProductCloudDocumentPaths(productId) {
+    const normalizedId = String(productId || '').trim();
+    if (!normalizedId) return [];
+    return getAdminProductsCloudCollectionPaths().map(path => `${path}/${normalizedId}`);
+}
+
+async function putAdminProductsCloudPayload(payload) {
+    let lastError = null;
+    for (const path of getAdminProductsCloudCollectionPaths()) {
+        try {
+            await firebaseDbRequest(path, 'PUT', payload);
+            return true;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    throw lastError || new Error('Cloud sync failed.');
+}
+
+async function loadAdminProductsCloudPayload() {
+    for (const path of getAdminProductsCloudCollectionPaths()) {
+        try {
+            const data = await firebaseDbRequest(path, 'GET');
+            if (data && typeof data === 'object') return data;
+        } catch (error) {}
+    }
+    return null;
+}
+
+async function putSingleAdminProductCloud(productId, product) {
+    let lastError = null;
+    for (const path of getAdminProductCloudDocumentPaths(productId)) {
+        try {
+            await firebaseDbRequest(path, 'PUT', product);
+            return true;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    throw lastError || new Error('Cloud sync failed.');
+}
+
+async function deleteSingleAdminProductCloud(productId) {
+    let lastError = null;
+    for (const path of getAdminProductCloudDocumentPaths(productId)) {
+        try {
+            await firebaseDbRequest(path, 'DELETE');
+            return true;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+    throw lastError || new Error('Cloud delete failed.');
+}
+
 
 // Cloud sync for custom products (admin products)
 async function saveCustomProductsToCloud(customProducts) {
@@ -1120,7 +1183,7 @@ async function saveCustomProductsToCloud(customProducts) {
             }
         }
         if (isCloudSyncEnabled() && cloudSession?.idToken) {
-            await firebaseDbRequest('/adminProducts', 'PUT', safeProducts);
+            await putAdminProductsCloudPayload(safeProducts);
             setCustomProductsDirty(false);
             return true;
         }
@@ -1139,7 +1202,7 @@ async function saveCustomProductsToCloud(customProducts) {
                 cloudSyncTemporarilyDisabled = false;
                 const ensured = await ensureCloudSessionForCustomProducts();
                 if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
-                    await firebaseDbRequest('/adminProducts', 'PUT', safeProducts);
+                    await putAdminProductsCloudPayload(safeProducts);
                     lastCustomProductsSyncError = '';
                     setCustomProductsDirty(false);
                     return true;
@@ -1195,7 +1258,7 @@ async function saveSingleAdminProductToCloud(product) {
             }
         }
 
-        await firebaseDbRequest(`/adminProducts/${productId}`, 'PUT', normalized);
+        await putSingleAdminProductCloud(productId, normalized);
         return true;
     } catch (error) {
         lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Cloud sync failed.', 'product sync');
@@ -1221,7 +1284,7 @@ async function deleteSingleAdminProductFromCloud(productId) {
             }
         }
 
-        await firebaseDbRequest(`/adminProducts/${normalizedId}`, 'DELETE');
+        await deleteSingleAdminProductCloud(normalizedId);
         setCustomProductsDirty(false);
         return true;
     } catch (error) {
@@ -1255,7 +1318,7 @@ async function loadCustomProductsFromCloud() {
     };
     try {
         if (isCloudSyncEnabled() && cloudSession?.idToken) {
-            const data = await firebaseDbRequest('/adminProducts', 'GET');
+            const data = await loadAdminProductsCloudPayload();
             const normalized = normalizeCloudProductsPayload(data);
             if (normalized) return normalized;
         }
@@ -1265,7 +1328,7 @@ async function loadCustomProductsFromCloud() {
 
         const ensured = await ensureCloudSessionForCustomProducts();
         if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
-            const authedData = await firebaseDbRequest('/adminProducts', 'GET');
+            const authedData = await loadAdminProductsCloudPayload();
             return normalizeCloudProductsPayload(authedData);
         }
         return null;
@@ -1274,7 +1337,7 @@ async function loadCustomProductsFromCloud() {
         try {
             const ensured = await ensureCloudSessionForCustomProducts();
             if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
-                const authedData = await firebaseDbRequest('/adminProducts', 'GET');
+                const authedData = await loadAdminProductsCloudPayload();
                 const authedNormalized = normalizeCloudProductsPayload(authedData);
                 if (authedNormalized) return authedNormalized;
             }
