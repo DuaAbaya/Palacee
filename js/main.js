@@ -1211,6 +1211,18 @@ async function deleteSingleAdminProductFromCloud(productId) {
         await firebaseDbRequest(`/adminProducts/${normalizedId}`, 'DELETE');
         return true;
     } catch (error) {
+        // Fallback for open database rules without auth/session.
+        try {
+            const baseUrl = String(CLOUD_SYNC_CONFIG.firebaseDatabaseUrl || '').replace(/\/+$/, '');
+            if (baseUrl) {
+                const response = await fetch(`${baseUrl}/adminProducts/${encodeURIComponent(normalizedId)}.json`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) return true;
+            }
+        } catch (fallbackError) {
+            console.warn('Cloud delete fallback failed:', fallbackError);
+        }
         lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Cloud delete failed.', 'product delete');
         return false;
     }
@@ -1444,12 +1456,23 @@ function getStoredCustomProducts() {
 }
 
 function saveStoredCustomProducts(customProducts) {
+    const payload = JSON.stringify(Array.isArray(customProducts) ? customProducts : []);
     try {
-        localStorage.setItem(CUSTOM_PRODUCTS_KEY, JSON.stringify(customProducts));
+        localStorage.setItem(CUSTOM_PRODUCTS_KEY, payload);
         return true;
     } catch (error) {
         console.warn('Failed to save custom products:', error);
         const message = String(error?.message || '');
+        // Quota edge-case: replacing a large key can fail unless old value is removed first.
+        if (/quota|exceeded|storage/i.test(message)) {
+            try {
+                localStorage.removeItem(CUSTOM_PRODUCTS_KEY);
+                localStorage.setItem(CUSTOM_PRODUCTS_KEY, payload);
+                return true;
+            } catch (retryError) {
+                console.warn('Retry save custom products failed:', retryError);
+            }
+        }
         if (/quota|exceeded|storage/i.test(message)) {
             lastCustomProductsSyncError = 'Browser storage full. Reduce image size or delete old products.';
         } else {
