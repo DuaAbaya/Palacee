@@ -348,7 +348,11 @@
                         showToast('Product added and synced successfully!');
                     } else if (result.savedLocally) {
                         const reason = result.error ? ` (${result.error})` : '';
-                        showToast(`Product added locally, cloud sync failed${reason}`, 'error');
+                        if (/permission denied/i.test(String(result.error || ''))) {
+                            showToast('Product added locally. Cloud sync blocked by Firebase rules.', 'success');
+                        } else {
+                            showToast(`Product added locally, cloud sync failed${reason}`, 'error');
+                        }
                     } else {
                         const reason = result.error ? ` (${result.error})` : '';
                         showToast(`Product added, but local save failed${reason}`, 'error');

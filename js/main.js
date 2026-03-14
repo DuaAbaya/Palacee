@@ -1239,39 +1239,22 @@ async function saveCustomProductsToCloud(customProducts) {
         setCustomProductsDirty(false);
         return true;
     } catch (error) {
-        console.warn('Cloud custom products sync failed:', error.message);
         lastCustomProductsSyncError = String(error?.message || 'Cloud sync failed.');
         if (isPermissionDeniedError(lastCustomProductsSyncError)) {
-            try {
-                // Retry once with a fresh anonymous auth session in case token/session is stale.
-                setCloudSession(null);
-                cloudSyncTemporarilyDisabled = false;
-                const ensured = await ensureCloudSessionForCustomProducts();
-                if (ensured && isCloudSyncEnabled() && cloudSession?.idToken) {
-                    await putAdminProductsCloudPayload(safeProducts);
-                    lastCustomProductsSyncError = '';
-                    setCustomProductsDirty(false);
-                    return true;
-                }
-                lastCustomProductsSyncError = mapCloudSyncError(
-                    lastCustomProductsSyncError || 'Permission denied',
-                    'product sync'
-                );
-            } catch (retryError) {
-                lastCustomProductsSyncError = mapCloudSyncError(
-                    retryError?.message || lastCustomProductsSyncError || 'Permission denied',
-                    'product sync'
-                );
-            }
+            lastCustomProductsSyncError = mapCloudSyncError(lastCustomProductsSyncError || 'Permission denied', 'product sync');
+            console.info('Cloud admin-product sync blocked by Firebase rules. Keeping local changes only.');
             return false;
         }
+        console.warn('Cloud custom products sync failed:', error.message);
         try {
             await saveAdminProductsToCloud(safeProducts);
             lastCustomProductsSyncError = '';
             setCustomProductsDirty(false);
             return true;
         } catch (fallbackError) {
-            console.warn('Cloud custom products fallback sync failed:', fallbackError.message);
+            if (!isPermissionDeniedError(fallbackError?.message || '')) {
+                console.warn('Cloud custom products fallback sync failed:', fallbackError.message);
+            }
             lastCustomProductsSyncError = String(fallbackError?.message || lastCustomProductsSyncError || 'Cloud sync failed.');
             return false;
         }
