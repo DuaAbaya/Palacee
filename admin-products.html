@@ -393,7 +393,12 @@
                     const rawId = btn.dataset.removeId;
                     const removeIndex = Number(btn.dataset.removeIndex);
                     btn.disabled = true;
-                    const removed = await window.removeAdminProduct(rawId, Number.isFinite(removeIndex) ? removeIndex : null);
+                    let removed = false;
+                    try {
+                        removed = await window.removeAdminProduct(rawId, Number.isFinite(removeIndex) ? removeIndex : null);
+                    } catch (error) {
+                        console.error('Admin product delete failed:', error);
+                    }
                     if (!removed) {
                         btn.disabled = false;
                         showToast('Unable to delete product', 'error');

@@ -1174,6 +1174,32 @@ async function saveSingleAdminProductToCloud(product) {
     }
 }
 
+async function deleteSingleAdminProductFromCloud(productId) {
+    if (!isCustomProductsCloudSyncEnabled()) return false;
+    lastCustomProductsSyncError = '';
+    const normalizedId = String(productId || '').trim();
+    if (!normalizedId) return false;
+    try {
+        cloudSyncTemporarilyDisabled = false;
+        if (!cloudSession?.idToken) {
+            const ensured = await ensureCloudSessionForCustomProducts();
+            if (!ensured) {
+                lastCustomProductsSyncError = mapCloudSyncError(
+                    lastCustomProductsSyncError || 'Anonymous auth failed. Enable Firebase Anonymous sign-in.',
+                    'product delete'
+                );
+                return false;
+            }
+        }
+
+        await firebaseDbRequest(`/adminProducts/${normalizedId}`, 'DELETE');
+        return true;
+    } catch (error) {
+        lastCustomProductsSyncError = mapCloudSyncError(error?.message || 'Cloud delete failed.', 'product delete');
+        return false;
+    }
+}
+
 async function loadCustomProductsFromCloud() {
     if (!isCustomProductsCloudSyncEnabled()) return null;
     cloudSyncTemporarilyDisabled = false;
@@ -1546,8 +1572,17 @@ async function removeAdminProduct(id, fallbackIndex = null) {
     }
     console.log('Memory - before:', beforeFilter, 'after:', products.length);
     
-    // Sync with cloud
-    await saveCustomProductsToCloud(filtered);
+    // Sync delete to cloud for cross-device propagation.
+    // Try precise DELETE first, then fallback to full list replace.
+    if (isCustomProductsCloudSyncEnabled()) {
+        const cloudDeleteTargetId = Number(removed?.id);
+        const cloudDeleted = await deleteSingleAdminProductFromCloud(
+            Number.isFinite(cloudDeleteTargetId) && cloudDeleteTargetId > 0 ? cloudDeleteTargetId : rawId
+        );
+        if (!cloudDeleted) {
+            await saveCustomProductsToCloud(filtered);
+        }
+    }
     
     // Try to refresh both shop and home sliders
     if (typeof renderProducts === 'function') {
